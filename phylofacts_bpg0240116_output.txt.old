@@ -1,0 +1,101 @@
+C:\Python27\PhyloProj>uniprot.py A7RLM8 B3SBJ1 B3SB47 C3YZV6 B7PB18 Q9I9H8 A5WVJ
+8 Q6GNU6 E1BR73 E1BS49 D2HE46 O14727 A7E2A2 O88879 A2RRK8 Q5DU30 Q8VI66 D3ZA56 Q
+9EPV5
+Protein: A7RLM8
+Nucleotide: XM_001639646.1
+Source: NCBI
+ORF start/stop indices in fetched nucleotide sequence: 0 3654
+ORF: ATGTTGGAAAAACACAGGCATCTATTGATA...TAA, length 3654
+
+Protein: B3SBJ1
+Nucleotide: XM_002117608.1
+Source: NCBI
+ORF start/stop indices in fetched nucleotide sequence: 0 3681
+ORF: ATGGCTGCTACAGAAAGCCAACGCCATCTA...TAA, length 3681
+
+Protein: B3SB47
+Nucleotide: XM_002117393.1
+Source: NCBI
+ORF start/stop indices in fetched nucleotide sequence: 0 3909
+ORF: ATGGATGAACTACAACGTAAGGCAATCATT...TAG, length 3909
+
+Protein: C3YZV6
+Nucleotide: XM_002598319.1
+Source: NCBI
+ORF start/stop indices in fetched nucleotide sequence: 156 3873
+ORF: ATGGACGAGCGAGCACGCAGCAGCCTGTTA...TGA, length 3717
+
+Protein: B7PB18
+Nucleotide: XM_002407585.1
+Source: NCBI
+ORF start/stop indices in fetched nucleotide sequence: 0 3525
+ORF: ATGCCCCAGGAAACGGCAGAGTCTGTCTGC...TGA, length 3525
+
+Protein: Q9I9H8
+Nucleotide: NM_131608.1
+Source: NCBI
+ORF start/stop indices in fetched nucleotide sequence: 0 3786
+ORF: ATGGAGGAACGTGCCCGCAGCCGCCTGCTG...TGA, length 3786
+
+Protein: A5WVJ8
+Nucleotide: CAN87826.1
+Source: EMBL
+ORF start/stop indices in fetched nucleotide sequence: 0 3786
+ORF: ATGGAGGAACGTGCCCGCAGCCGCCTGCTG...TGA, length 3786
+
+Protein: Q6GNU6
+Nucleotide: NM_001092365.1
+Source: NCBI
+ORF start/stop indices in fetched nucleotide sequence: 187 3934
+ORF: ATGGATGAGAAGGCTCGAAGTCTGTTGCTT...TGA, length 3747
+
+problem reading: http://www.uniprot.org/mapping/
+For Uniprot ID E1BR73, no EBI or NCBI nucleotide sequence
+
+problem reading: http://www.uniprot.org/mapping/
+For Uniprot ID E1BS49, no EBI or NCBI nucleotide sequence
+
+Protein: D2HE46
+Nucleotide: EFB29330.1
+Source: EMBL
+ORF start/stop indices in fetched nucleotide sequence: 0 3750
+ORF: ATGGACGCAAAAGCTCGAAACTGTTTGCTT...GAG, length 3750
+
+
+For Uniprot ID O14727, no ORF found.
+
+Protein: A7E2A2
+Nucleotide: AAI50256.1
+Source: EMBL
+ORF start/stop indices in fetched nucleotide sequence: 0 3714
+ORF: ATGGATGCAAAAGCTCGAAATTGTTTGCTT...TAA, length 3714
+
+Protein: O88879
+Nucleotide: NM_001042558.1
+Source: NCBI
+ORF start/stop indices in fetched nucleotide sequence: 668 4418
+ORF: ATGGATGCAAAGGCCCGCAATTGTTTGCTT...TGA, length 3750
+
+problem reading: http://www.uniprot.org/mapping/
+For Uniprot ID A2RRK8, no EBI or NCBI nucleotide sequence
+
+Protein: Q5DU30
+Nucleotide: NM_001042558.1
+Source: NCBI
+ORF start/stop indices in fetched nucleotide sequence: 662 4418
+ORF: GGCACAATGGATGCAAAGGCCCGCAATTGT...TGA, length 3756
+
+Protein: Q8VI66
+Nucleotide: AAL36935.1
+Source: EMBL
+ORF start/stop indices in fetched nucleotide sequence: 0 3750
+ORF: ATGGATGCAAAGGCCCGAAATTGTTTGCTT...TAA, length 3750
+
+problem reading: http://www.uniprot.org/mapping/
+For Uniprot ID D3ZA56, no EBI or NCBI nucleotide sequence
+
+Protein: Q9EPV5
+Nucleotide: NM_023979.1
+Source: NCBI
+ORF start/stop indices in fetched nucleotide sequence: 617 4367
+ORF: ATGGATGCAAAGGCCCGAAATTGTTTGCTT...TAA, length 3750
