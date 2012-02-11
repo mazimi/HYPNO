@@ -171,6 +171,7 @@ def tryEMBL(uniprotID):
 		request = urllib2.Request(url, data)
 		response = urllib2.urlopen(request)			
 		ebiIDs = response.read(200000)
+		print ebiIDs
 		ebiIDs = ebiIDs.split()					# Get out ids
 		response.close()
 		if len(ebiIDs) > 2:						# If it is not empty, proceed
