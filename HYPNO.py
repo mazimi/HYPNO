@@ -44,7 +44,11 @@ def getDNASeqs(ID):
 	numSubTrees = getNumSubTrees(ID)
 
 	for i in xrange(0, numSubTrees):
-		#Call script to 
+		#Call script to retreive DNA sequences:
+		#ideally we retreive individual DNA sequences
+		#rather than that of an entire subtree
+		#this can be done in parallel
+		print "placeholder"
 		
 
 def main():
