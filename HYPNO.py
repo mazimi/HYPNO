@@ -20,6 +20,7 @@ def initialize(ID, msa, tree):
 #subtrees based on given threshold
 def makeSubtrees(ID, msa, tree, threshold):
 	subprocess.call(["python kerf.py --msa-file " + ID + '/' + msa + " --tree-file " + ID + '/' + tree + " --output-directory " + ID + " --threshold " + str(threshold)], shell=True)
+	#TODO
 	#Should do some error handling
 	#NOTE: Kerf craps out if threshold is above highest PID in tree (ie. no branches to prune, use threshold 100.0 to reproduce). Need to fix this.
 
@@ -44,11 +45,16 @@ def getDNASeqs(ID):
 	numSubTrees = getNumSubTrees(ID)
 
 	for i in xrange(0, numSubTrees):
-		#Call script to retreive DNA sequences:
-		#ideally we retreive individual DNA sequences
-		#rather than that of an entire subtree
-		#this can be done in parallel
-		print "placeholder"
+		#Retreive UNIPROT Accession IDs from subtrees
+		#Assuming all are uniprot and 6 character A-Z and 0-9 (could make this more exact)
+		print 'Subtree #' + str(i)
+		tree = Phylo.read(ID + '/' + str(i) + '.nh', 'newick')
+		for clade in tree.find_clades():
+			if clade.name:
+				match = re.search(r'\|([A-Z,0-9]{6})\|', clade.name)
+				print '\t' + match.group(1)
+		#TODO
+		#Pass list of accession IDs to DNA sequence lookup script
 		
 
 def main():
