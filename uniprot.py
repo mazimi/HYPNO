@@ -32,7 +32,8 @@ def orfFinder(seq, trans_table, min_protein_length, proSeq, source):
 					percentID = pID(trans[aa_start:aa_end].lower(),proSeq.lower())
 					print '\npID :'+percentID
 					# if source == 'tBLASTn':
-						# do alternative alignment and thresholding.						
+						# do alternative alignment and thresholding.
+						# test/						# 
 					if int(percentID) > 97:	# If there is greater than 97 % ID
 										# (See isoform discussion: http://www.uniprot.org/faq/30)
 						if strand == 1:
