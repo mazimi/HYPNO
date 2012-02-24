@@ -45,14 +45,15 @@ def getDNASeqs(ID):
 	numSubTrees = getNumSubTrees(ID)
 
 	for i in xrange(0, numSubTrees):
-		#Retreive UNIPROT Accession IDs from subtrees
-		#Assuming all are uniprot and 6 character A-Z and 0-9 (could make this more exact)
+		#Retreive Uniprot Accession IDs from subtrees
+		#Restricted to Uniprot ID format listed at: http://www.uniprot.org/manual/accession_numbers
 		print 'Subtree #' + str(i)
 		tree = Phylo.read(ID + '/' + str(i) + '.nh', 'newick')
 		for clade in tree.find_clades():
 			if clade.name:
-				match = re.search(r'\|([A-Z,0-9]{6})\|', clade.name)
-				print '\t' + match.group(1)
+				match = re.search(r'\|([A-N,R-Z][0-9][A-Z][A-Z,0-9][A-Z,0-9][0-9]|[O-Q][0-9][A-Z,0-9][A-Z,0-9][A-Z,0-9][0-9])\|', clade.name)
+				if match:
+					print '\t' + match.group(1)
 		#TODO
 		#Pass list of accession IDs to DNA sequence lookup script
 		
