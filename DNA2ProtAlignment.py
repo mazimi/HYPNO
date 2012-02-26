@@ -31,7 +31,7 @@ def getDNASeq(fileDNA):
 
 #Retreive entire DNA record from file to use for FASTA reconstruction
 #record.seq will be overwritten, other information will be preserved
-def getDNASeqIDs(fileDNA):
+def getDNArecord(fileDNA):
 	seqDNAid = []
 	handle = open(fileDNA, "rU")
 	for record in SeqIO.parse(handle, "fasta"):
@@ -85,7 +85,7 @@ def main():
 
 	seqProt = getProtSeq(fileProt)
 	seqDNA = getDNASeq(fileDNA)
-	seqDNArecord = getDNASeqIDs(fileDNA)
+	seqDNArecord = getDNArecord(fileDNA)
 
 	msaDNA = translateProt2DNAmsa(seqProt, seqDNA)
 
