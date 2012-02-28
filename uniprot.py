@@ -1,5 +1,4 @@
 #!/usr/bin/python -tt
-# Copyright Nima Emami, 2012
 
 from Bio import Entrez, SeqIO, AlignIO
 from Bio.Blast import NCBIWWW
