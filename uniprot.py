@@ -2,9 +2,10 @@
 # Copyright Nima Emami, 2012
 
 from Bio import Entrez, SeqIO, AlignIO
-from Bio.Blast import NCBIWWW
+from xml.etree.ElementTree import ElementTree
+from Bio.Blast import NCBIWWW, NCBIXML
 from Bio.Seq import Seq
-import urllib,urllib2, sys, re
+import urllib,urllib2, sys, re, xml
 
 # orfFinder: 6 frame ORF search on DNA/mRNA sequence (Adapted & Modified from BioPython)
 # input: Nucleic Acid Sequence (0), Translation Table Number (1), ORF lenght lower bound (2),
@@ -30,7 +31,7 @@ def orfFinder(seq, trans_table, min_protein_length, proSeq, source):
 					aa_end = trans_len
 				if aa_end-aa_start == min_protein_length:	# If this is the same number of AA's as the Protein
 					percentID = pID(trans[aa_start:aa_end].lower(),proSeq.lower())
-					print '\npID :'+percentID
+					print >>fh,'\npID :'+percentID
 					# if source == 'tBLASTn':
 						# do alternative alignment and thresholding.
 						# test/						# 
@@ -111,45 +112,45 @@ def getSeqID(uniprotID):
 																			# if matching ORF is present in the
 																			# nucleotide sequence and find the
 																			# start and stop indices.
-		print 'startandstop: '
-		print startAndStop
+		# print >>fh,'startandstop: '
+		# print >>fh,startAndStop
 		if startAndStop.pop():						# If a match was found, print to standard output.
-			print 'Protein: '+quadTuple[0]+'\nNucleotide: '+quadTuple[1]+'\nSource: '+quadTuple[3]
-			print 'ORF start/stop indices in fetched nucleotide sequence: '+str(startAndStop[0])+' '+str(startAndStop[1])
+			print >>fh,'Protein: '+quadTuple[0]+'\nNucleotide: '+quadTuple[1]+'\nSource: '+quadTuple[3]
+			print >>fh,'ORF start/stop indices in fetched nucleotide sequence: '+str(startAndStop[0])+' '+str(startAndStop[1])
 			DNA = dna_seq[startAndStop[0]:startAndStop[1]]
-			print "ORF: %s...%s, length %i\n" % (DNA[:30], DNA[-3:], len(DNA))
+			print >>fh,"ORF: %s...%s, length %i\n" % (DNA[:30], DNA[-3:], len(DNA))
 		else:
-			print '\nFor Uniprot ID '+uniprotID+', no ORF found.\n'
+			print >>fh,'\nFor Uniprot ID '+uniprotID+', no ORF found:\n'
+			print >>fh,dna_seq
 	else: 
 		taxon = getTaxon(uniprotID)
 		if taxon != 'null':
 			proTuples = orfLength(uniprotID)				# proTuples will tell you the length of the protein 
 			min_pro_len = proTuples[0]						# protein length
 			proSeq = proTuples[1]							# protein sequence
-			quadTuple = taxBLASTn(uniprotID,taxon)
-			if taxon == 'Chrysemys picta':
-				print 'DNA seq for Chrysemys picta: '+nucSequence
+			quadTuple = taxBLASTn(uniprotID,taxon,proSeq)
 			if len(quadTuple) != 0:
 				nucSequence = quadTuple[2]
 				dna_seq = Seq(nucSequence)
 				source = quadTuple[3]
-				startAndStop = orfFinder(dna_seq, table, min_pro_len, proSeq,source)	# Subroutine calls to determine
+				startAndStop = orfFinder(dna_seq, table, min_pro_len, proSeq,source)	# <-- change for referencing hit protein sequence
 																			# if matching ORF is present in the
 																			# nucleotide sequence and find the
 																		# start and stop indices.
-				print 'startandstop: '
-				print startAndStop
+				print >>fh,'startandstop: '
+				print >>fh,startAndStop
 				if startAndStop.pop():						# If a match was found, print to standard output.
-					print 'Protein: '+quadTuple[0]+'\nNucleotide: '+quadTuple[1]+'\nSource: '+quadTuple[3]
-					print 'ORF start/stop indices in fetched nucleotide sequence: '+str(startAndStop[0])+' '+str(startAndStop[1])
+					print >>fh,'Protein: '+quadTuple[0]+'\nNucleotide: '+quadTuple[1]+'\nSource: '+quadTuple[3]
+					print >>fh,'ORF start/stop indices in fetched nucleotide sequence: '+str(startAndStop[0])+' '+str(startAndStop[1])
 					DNA = dna_seq[startAndStop[0]:startAndStop[1]]
-					print "ORF: %s...%s, length %i\n" % (DNA[:30], DNA[-3:], len(DNA))
+					print >>fh,"ORF: %s...%s, length %i\n" % (DNA[:30], DNA[-3:], len(DNA))
 				else:
-					print '\nFor Uniprot ID '+uniprotID+', no ORF found.\n'
+					print >>fh,'\nFor Uniprot ID '+uniprotID+', no ORF found.\n'
+					print >>fh,dna_seq
 			else:
-				print '\nFor Uniprot ID '+uniprotID+', sequence within 1e-4 e-value could not be retrieved.'
+				print >>fh,'\nFor Uniprot ID '+uniprotID+', sequence within 1e-4 e-value could not be retrieved.'
 		else:
-			print '\nFor Uniprot ID '+uniprotID+', no EBI or NCBI nucleotide sequence\n'
+			print >>fh,'\nFor Uniprot ID '+uniprotID+', no EBI or NCBI nucleotide sequence\n'
 		
 # getSeq: use NCBI accession retrieved by tBLASTn to do a nucleotide query 
 # input: NCBI accession (0)
@@ -162,7 +163,8 @@ def getSeq(NCBI_ID):
 		Seq = record.seq
 		dna_seq = Seq.tostring()
 	except:
-		sys.stderr.write('problem reading: '+url+' or performing Entrez efetch')	# catch URL connection errors
+		print >>fh,'problem reading: '+url+' or performing Entrez efetch' # catch URL connection errors
+		# sys.stderr.write('problem reading: '+url+' or performing Entrez efetch')	# catch URL connection errors
 	
 	return dna_seq
 
@@ -170,26 +172,39 @@ def getSeq(NCBI_ID):
 # input: uniprot ID (0), common taxonomic organism name (1)
 # output: tuple (uniprot ID, NCBI nucleotid ID,DNA ORF matches to standard output
 # NOTE: Biopython BLAST documentation: http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc81
-def taxBLASTn(uniprotID,taxName):
+def taxBLASTn(uniprotID,taxName,proSeq):
 	mapTuple = ()
 	try:
-		print '\nFor '+uniprotID+' -- '+taxName+', performing taxBLASTn:'
-		result_handle = NCBIWWW.qblast("tblastn", "nr", uniprotID, expect = .0001, entrez_query = taxName+'[organism]')
+		print >>fh,'\nFor '+uniprotID+' -- '+taxName+', performing taxBLASTn:'
+		result_handle = NCBIWWW.qblast("tblastn", "nr", proSeq, expect = .0001, entrez_query = taxName+'[organism]')
 		string = result_handle.read()
 		result_handle.close()
-		xml_parse = re.search(r'<Hit_accession>(\w+)</Hit_accession>',string)
-		accessionNCBI = xml_parse.group(1)
+		tree = xml.etree.ElementTree.fromstring(string)
+		iteration = tree.find("BlastOutput_iterations/Iteration")
+		hits = iteration.findall("Iteration_hits/Hit")
+		topHit = hits[0]
+		accessionNCBI = topHit.findtext("Hit_accession")
+		qseq = topHit.findtext("Hit_hsps/Hsp/Hsp_qseq")
+		hseq = topHit.findtext("Hit_hsps/Hsp/Hsp_hseq")
+		midseq = topHit.findtext("Hit_hsps/Hsp/Hsp_midline")
+		print >>fh,'Q: '+qseq
+		print >>fh,"M: "+midseq
+		print >>fh,"H: "+hseq
 		dna_seq = getSeq(accessionNCBI)
 		if dna_seq != '':
 			mapTuple = (uniprotID,accessionNCBI,dna_seq,'tBLASTn')
 			return mapTuple
-		else: 
-			sys.stderr.write('\tFor uniprot ID '+uniprotID+' and NCBI accession '+accessionNCBI+', problem with NCBI efetch sequence retrieval.')	# catch URL connection errors
+		else:
+			print >>fh,('\tFor uniprot ID '+uniprotID+' and NCBI accession '+accessionNCBI+', problem with NCBI efetch sequence retrieval.')	# catch URL connection errors
+			# sys.stderr.write('\tFor uniprot ID '+uniprotID+' and NCBI accession '+accessionNCBI+', problem with NCBI efetch sequence retrieval.')	# catch URL connection errors
 			return mapTuple
 	except:
-		sys.stderr.write('\tProblem with a) taxon access from Uniprot,\
-						 \n\tb) reading organism specific tBLASTn,\
-						 \n\tc) XML parsing of NCBI accession ID for the top hit')	# catch URL connection errors
+		print >>fh,'\tProblem with a) taxon access from Uniprot,\
+		 				 \n\tb) reading organism specific tBLASTn,\
+						 \n\tc) XML parsing of NCBI accession ID for the top hit' # catch URL connection errors
+		# sys.stderr.write('\tProblem with a) taxon access from Uniprot,\
+		# 				 \n\tb) reading organism specific tBLASTn,\
+		# 				 \n\tc) XML parsing of NCBI accession ID for the top hit')	# catch URL connection errors
 		return mapTuple
 
 # tryNCBI: tries does uniprot --> NBCI nucleotide ID fetch
@@ -279,8 +294,9 @@ def getTaxon(uniprotID):
 		match = re.search(r'OS=(\w+\s+\w+)\s',carrot)
 		taxName = match.group(1)
 		return taxName
-	except:												# catch URL connection errors
-		sys.stderr.write('problem with Uniprot URL connection, or regular expression parsing.')
+	except:			
+		print >>fh,'problem with Uniprot URL connection, or regular expression parsing.' 	# catch URL connection errors
+		# sys.stderr.write('problem with Uniprot URL connection, or regular expression parsing.')
 		return 'null'
 
 # main: Delegates nucleotide sequence fetch
@@ -288,13 +304,15 @@ def getTaxon(uniprotID):
 # output: none
 # NOTE: Programmatic Uniprot Access: http://www.uniprot.org/faq/28#id_mapping_examples
 def main():
-	
-	sys.argv.pop(0)
+
 	protIDs = sys.argv
 	for ID in protIDs:
 		getSeqID(ID)
 	sys.exit(1)
-	  
+
+sys.argv.pop(0)
+outputFile = sys.argv.pop(0)
+fh = open(outputFile, 'w')					
 Entrez.email = 'timanoed154@yahoo.com'				# mandatory NCBI email for reference
 if __name__ == '__main__':
   main()
