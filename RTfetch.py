@@ -49,6 +49,7 @@ class RTfetch:
 			endSoFar = 0 				# |
 			pidSoFar = 0 				# |
 			alignedSoFar = '' 			# |
+			mappedSeq = 0 				# |
 			seq_len = len(seq)			# Length of original protein sequence, for the purpose of indexing start and end indices
 			for strand, nuc in [(+1, seq), (-1, seq.reverse_complement())]:	# Forward vs. Reverse frames
 				for frame in range(3):											# 3 reading frames for each
@@ -75,7 +76,7 @@ class RTfetch:
 									mappedDNA = mapDNA(start,end,seq,aligned)	# Call DNA mapping subroutine to map DNA to aligned protein to query
 									mappedSeq = Seq(mappedDNA)					# RevComp the DNA sequence
 									mappedSeq = mappedSeq.reverse_complement()
-								return (end,start,aligned,int(percentID),str(mappedDNA)) # Flip Start and End indices because of start and stop index
+								return (end,start,aligned,int(percentID),str(mappedSeq)) # Flip Start and End indices because of start and stop index
 							elif int(percentID) > bestSoFar:	# Trying to maximize percent identity
 																# (See isoform discussion: http://www.uniprot.org/faq/30)
 								bestSoFar = int(percentID)
@@ -122,7 +123,7 @@ class RTfetch:
 			print >>seqB, '> seqB\n'+template+'\n'
 			seqA.close()							# Close temporary file handle references
 			seqB.close()
-			os.system('needle -asequence tempA.fasta -sprotein1 -bsequence tempB.fasta -sprotein2 -gapopen 10 -gapextend 0.5 -outfile tempAlign.needle > nul')
+			os.system('needle -asequence tempA.fasta -sprotein1 -bsequence tempB.fasta -sprotein2 -gapopen 10 -gapextend 0.5 -outfile tempAlign.needle -options 0 -auto 0 -error 0 -warning 0')
 			needle = open('tempAlign.needle','rU')
 			alignment = AlignIO.read(needle,"emboss")		# AlignIO BioPerl Module reads out EMBOSS globally aligned sequences
 			i=0 									 # Global alignment --> only 1 counter necessary for both sequences
