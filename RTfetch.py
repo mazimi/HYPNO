@@ -33,7 +33,7 @@ class RTfetch:
 			# (9) ORF Ending Index (default = 'null')
 			# (10) mapped DNA sequence (default = 'null')
 	def getSeqID(self, uniprotID):
-		
+
 		# orfFinder: 6 frame ORF search on DNA/mRNA sequence (Adapted & Modified from BioPython)
 		# input: Nucleic Acid Sequence (0), Translation Table Number (1), ORF lenght lower bound (2),
 		#			Protein Sequence for alignment confirmation (3)
@@ -49,7 +49,7 @@ class RTfetch:
 			endSoFar = 0 				# |
 			pidSoFar = 0 				# |
 			alignedSoFar = '' 			# |
-			mappedSeq = 0 				# |
+			mappedSeq = '' 				# |
 			seq_len = len(seq)			# Length of original protein sequence, for the purpose of indexing start and end indices
 			for strand, nuc in [(+1, seq), (-1, seq.reverse_complement())]:	# Forward vs. Reverse frames
 				for frame in range(3):											# 3 reading frames for each
@@ -69,7 +69,7 @@ class RTfetch:
 								if strand == 1:						# Forward frame
 									start = max(0,frame+aa_start*3)			# start index (w/ max because aa_start + frame may be less than 0)
 									end = min(seq_len,frame+aa_end*3+3)		# end index (w/ +3 at end because frame goes negative instead of positive)
-									mappedDNA = mapDNA(start,end,seq,aligned)	# Call DNA mapping subroutine to map DNA to aligned protein to query
+									mappedSeq = mapDNA(start,end,seq,aligned)	# Call DNA mapping subroutine to map DNA to aligned protein to query
 								else:								# Reverse frame
 									start = max(0,seq_len-frame-aa_end*3-3)	# Backwards case, so everything is effectively reversed
 									end = seq_len-frame-aa_start*3 			# end index is now at the beginning, so subtract off AA start
@@ -104,7 +104,7 @@ class RTfetch:
 			protCounter = 0
 			while(protCounter < len(alignedProtein)):	# While you have not surpassed the length of the aligned protein sequence
 				if(alignedProtein[protCounter] == ' ' or alignedProtein[protCounter] == '-'):
-					mapped = mapped + '   '				# For each gap in the protein alignment, insert three gaps in the DNA alignment
+					mapped = mapped + '---'				# For each gap in the protein alignment, insert three gaps in the DNA alignment
 				else:
 					mapped = mapped + dna[dnaCounter:dnaCounter+3]	# Otherwise, insert the next three nucleic acids
 					dnaCounter = dnaCounter + 3 					# and increment both counters
@@ -123,7 +123,7 @@ class RTfetch:
 			print >>seqB, '> seqB\n'+template+'\n'
 			seqA.close()							# Close temporary file handle references
 			seqB.close()
-			os.system('needle -asequence tempA.fasta -sprotein1 -bsequence tempB.fasta -sprotein2 -gapopen 10 -gapextend 0.5 -outfile tempAlign.needle -options 0 -auto 0 -error 0 -warning 0')
+			os.system('needle -asequence tempA.fasta -sprotein1 -bsequence tempB.fasta -sprotein2 -gapopen 10 -gapextend 0.5 -outfile tempAlign.needle -auto')
 			needle = open('tempAlign.needle','rU')
 			alignment = AlignIO.read(needle,"emboss")		# AlignIO BioPerl Module reads out EMBOSS globally aligned sequences
 			i=0 									 # Global alignment --> only 1 counter necessary for both sequences
@@ -159,7 +159,7 @@ class RTfetch:
 			merged = merged.strip()					# Remove whitespace
 			proTup = (len(merged),merged)
 			return proTup
-			
+
 		# getSeq: use NCBI accession retrieved by tBLASTn to do a nucleotide query 
 		# input: NCBI accession (0)
 		# output: returns tuple of (NCBI_ID,'NCBI')
@@ -202,14 +202,17 @@ class RTfetch:
 				# print >>fh,'Q: '+qseq
 				# print >>fh,"M: "+midseq
 				# print >>fh,"H: "+hseq
-				sec = accessionNCBI[1:2]
-				onetwo = accessionNCBI[0:2]
-				# TODO: improve this, make more robust
-				flagOne = sec == 'C' or sec == 'G' or sec == 'T' or sec == 'W' or sec == 'Z' or sec == 'S'
-				flagTwo = onetwo == 'AP' or onetwo == 'BS' or onetwo == 'AL' or onetwo == 'BX' or onetwo == 'CR'\
-							or onetwo == 'CT' or onetwo == 'CU' or onetwo == 'FP' or onetwo == 'FQ' or onetwo == 'FR'\
-							or onetwo == 'AE' or onetwo == 'CP' or onetwo == 'CY' 
-				if flagOne or flagTwo:
+				prefix = accessionNCBI[0:2]
+				# ** NOTE: based on following keys:
+				# 1) http://www.ncbi.nlm.nih.gov/RefSeq/key.html
+				# 2) http://www.ncbi.nlm.nih.gov/Sequin/acc.html
+				# TODO: improve robustness?
+				flag = prefix == 'AC' or prefix == 'NC' or prefix == 'NG' or prefix == 'NT' or prefix == 'NW'\
+							or prefix == 'NZ' or prefix == 'NS' or prefix == 'AP' or prefix == 'BS' or prefix == 'AL'\
+							or prefix == 'BX' or prefix == 'CR' or prefix == 'CT' or prefix == 'CU' or prefix == 'FP'\
+							or prefix == 'FQ' or prefix == 'FR' or prefix == 'AE' or prefix == 'CP' or prefix == 'CY'\
+							or prefix == 'AM' 
+				if flag:
 					dna_seq = chromParse(GI,Hit_from,Hit_to)
 				else:
 					dna_seq = getSeq(accessionNCBI)
@@ -270,9 +273,15 @@ class RTfetch:
 				if len(ncbiIDs) > 2:						# If it is not empty, proceed
 					ncbiIDs = ncbiIDs[2:]
 					nucID = ncbiIDs[1]
-					sec = nucID[1:2]
-					if sec == 'C' or sec == 'G' or sec == 'T' or sec == 'W' or sec == 'Z' or sec == 'S':
-						return 'pass'
+					# if prefix == 'AC' or prefix == 'NC' or prefix == 'NG' or prefix == 'NT' or prefix == 'NW'\
+					# 		or prefix == 'NZ' or prefix == 'NS':
+					# 	return 'pass'
+					if prefix == 'AC' or prefix == 'NC' or prefix == 'NG' or prefix == 'NT' or prefix == 'NW'\
+							or prefix == 'NZ' or prefix == 'NS' or prefix == 'AP' or prefix == 'BS' or prefix == 'AL'\
+							or prefix == 'BX' or prefix == 'CR' or prefix == 'CT' or prefix == 'CU' or prefix == 'FP'\
+							or prefix == 'FQ' or prefix == 'FR' or prefix == 'AE' or prefix == 'CP' or prefix == 'CY'\
+							or prefix == 'AM':
+							return 'pass'
 					handle = Entrez.efetch(db="nucleotide", id=nucID,rettype="fasta")	# use e-fetch to get sequence
 					record = SeqIO.read(handle, "fasta")		# use SeqIO to get out the fasta DNA/mRNA sequence
 					Seq = record.seq
@@ -288,7 +297,7 @@ class RTfetch:
 		# output: tuple (uniprot ID, NCBI nucleotide ID,DNA ORF matches to standard output
 		# NOTE: Programmatic Uniprot Access: http://www.uniprot.org/faq/28#id_mapping_examples
 		def tryEMBL(uniprotID):
-			
+
 			url = 'http://www.uniprot.org/mapping/'			# Base URL
 			# DB Identifiers: http://www.uniprot.org/faq/28#id_mapping_examples
 			mapTuple = ()
@@ -318,13 +327,13 @@ class RTfetch:
 				DNA = ''.join(emblLines)				
 				DNA = DNA.strip()						# Remove whitespace
 				mapTuple = (uniprotID,nucID,DNA,'EMBL')
-			
+
 			except:
 				# sys.stderr.write('problem reading: '+url)	# catch URL connection errors
 				mapTuple = ()
 
 			return mapTuple
-				
+
 		# getTaxon: get common name for organism corresponding to uniprot ID
 		# input: uniprot ID
 		# output: tuple
@@ -390,6 +399,6 @@ class RTfetch:
 																				# start and stop indices.
 		outputTuple = (uniprotID, nucID, source, proSeq, nucSequence, aligned, pID, startORF, endORF, mappedDNA)
 		return outputTuple
-			
+
 if __name__ == '__main__':
 	sys.exit(1)
