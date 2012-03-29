@@ -3,7 +3,7 @@
 
 from Bio import Entrez, SeqIO, AlignIO
 from xml.etree.ElementTree import ElementTree
-from Bio.Blast import NCBIWWW, NCBIXML
+from Bio.Blast import NCBIWWW
 from Bio.Seq import Seq
 import urllib,urllib2, sys, re, xml, os
 
@@ -24,24 +24,22 @@ class RTfetch:
 			# Tuple indices:
 			# (1) Uniprot ID query
 			# (2) Nucleotide ID (default = 'null')
-			# (3) Database Source (EMBL, NCBI, TBLASTN, default = 'null')
-			# (4) Protein sequence
-			# (5) DNA Sequence (default = 'null')
+			# (3) Database source (EMBL, NCBI, TBLASTN, default = 'null')
+			# (4) Protein sequence (default = 'null')
+			# (5) DNA sequence (default = 'null')
 			# (6) Aligned protein hit (default = 'null')
-			# (7) Percent Identity (default = 'null')
-			# (8) ORF Starting Index (default = 'null')
-			# (9) ORF Ending Index (default = 'null')
-			# (10) mapped DNA sequence (default = 'null')
+			# (7) Percent identity (default = 'null')
+			# (8) ORF starting index (default = 'null')
+			# (9) ORF ending index (default = 'null')
+			# (10) Mapped DNA sequence (default = 'null')
 	def getSeqID(self, uniprotID):
 
-		# orfFinder: 6 frame ORF search on DNA/mRNA sequence (Adapted & Modified from BioPython)
-		# input: Nucleic Acid Sequence (0), Translation Table Number (1), ORF lenght lower bound (2),
-		#			Protein Sequence for alignment confirmation (3)
+		# orfFinder: 6 frame ORF search on nucleotide sequence (adapted & modified from BioPython Cookbook, like below)
+		# input: nucleic acid sequence (0), translation table integer value (1), target protein length (2),
+		#			protein sequence for pairwise alignment comparisons (3)
 		# output: Start Index of Hit (0), End Index of Hit (1), flag = 1 (2) OR flag = 0 (0)
-		# NOTE: Source code: http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc224
-			# NOTE: Translation tables: http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
-		# May need to be modified based on taxonomic classifications, currently set to classical genetic code
-		def orfFinder(seq, trans_table, min_protein_length, proSeq, source):
+		# NOTE: Reference BioPython code: http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc224
+		def orfFinder(seq, trans_table, targetLength, proSeq):
 			bestSoFar = 0 				# Set defaults
 			startSoFar = 0 				# ^
 			pStartSoFar = 0 			# |
@@ -50,20 +48,20 @@ class RTfetch:
 			pidSoFar = 0 				# |
 			alignedSoFar = '' 			# |
 			mappedSeq = '' 				# |
-			seq_len = len(seq)			# Length of original protein sequence, for the purpose of indexing start and end indices
+			seq_len = len(seq)			# length of original protein sequence, for the purpose of indexing start and end indices
 			for strand, nuc in [(+1, seq), (-1, seq.reverse_complement())]:	# Forward vs. Reverse frames
 				for frame in range(3):											# 3 reading frames for each
-					trans = str(nuc[frame:].translate(trans_table))			# ** Translation based on trans_table not working...
-					trans_len = len(trans)									# --> Quick fix: check for initial methionine
+					trans = str(nuc[frame:].translate(trans_table))
+					trans_len = len(trans)
 					aa_start = 0
 					aa_end = 0
 					while aa_start < trans_len:
-						aa_end = trans.find("*", aa_start)					# Find Stop codon
+						aa_end = trans.find("*", aa_start)					# find ter (stop) codon, labeled as '*'
 						if aa_end == -1:
 							aa_end = trans_len
-						# ** Current Heuristic: Only look for DNA sequences which code for proteins 3/4ths to 5/4ths of the size
+						# ** current heuristic: only look for nucleotide sequences which code for proteins 3/4ths to 5/4ths of target size
 						# -->  May want to refine this at some point
-						if trans[aa_start] == 'M' and 1.25*min_protein_length >= aa_end-aa_start >= 0.75*min_protein_length:
+						if 1.25*targetLength >= aa_end-aa_start >= 0.75*targetLength:
 							(percentID, aligned) = getpID(trans[aa_start:aa_end].lower(),proSeq.lower())
 							if int(percentID) > 99:					# If it is almost a perfect match
 								if strand == 1:						# Forward frame
@@ -113,7 +111,7 @@ class RTfetch:
 
 		# pID: pairwise alignment subroutine (Adapted and modified from below source)
 		# input: 2 nucleotide sequences (0,1)
-		# output: integer value between 0 and 100 (0)
+		# output: integer value between 0 and 100 (0), aligned translated protein sequence (1)
 		# NOTE: Uses EMBOSS package needle executable call
 		# NOTE: Prints to temporary file handle tempAlign.needle
 		def getpID(target,template):											
@@ -125,7 +123,7 @@ class RTfetch:
 			seqB.close()
 			os.system('needle -asequence tempA.fasta -sprotein1 -bsequence tempB.fasta -sprotein2 -gapopen 10 -gapextend 0.5 -outfile tempAlign.needle -auto')
 			needle = open('tempAlign.needle','rU')
-			alignment = AlignIO.read(needle,"emboss")		# AlignIO BioPerl Module reads out EMBOSS globally aligned sequences
+			alignment = AlignIO.read(needle,"emboss")		# AlignIO BioPython Module reads out EMBOSS globally aligned sequences
 			i=0 									 # Global alignment --> only 1 counter necessary for both sequences
 			counter = 0 							 # Global counter
 			sequence0 = alignment[0]
@@ -162,7 +160,7 @@ class RTfetch:
 
 		# getSeq: use NCBI accession retrieved by tBLASTn to do a nucleotide query 
 		# input: NCBI accession (0)
-		# output: returns tuple of (NCBI_ID,'NCBI')
+		# output: DNA sequence corresponding to that NCBI ID
 		def getSeq(NCBI_ID):
 			try:
 				handle = Entrez.efetch(db="nucleotide", id=NCBI_ID,rettype="fasta")	# use e-fetch to get sequence
@@ -178,11 +176,10 @@ class RTfetch:
 		# taxBLASTn: tries does uniprot --> NBCI nucleotide ID fetch
 		# input: uniprot ID (0), common taxonomic organism name (1)
 		# output: tuple (uniprot ID, NCBI nucleotid ID,DNA ORF matches to standard output
-		# NOTE: Biopython BLAST documentation: http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc81
+		# NOTE: BioPython BLAST documentation: http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc81
 		def taxBLASTn(uniprotID,taxName,proSeq):
 			mapTuple = ()
 			try:
-				# print >>fh,'\nFor '+uniprotID+' -- '+taxName+', performing taxBLASTn:'
 				result_handle = NCBIWWW.qblast("tblastn", "nr", proSeq, expect = .0001, entrez_query = taxName+'[organism]')
 				string = result_handle.read()
 				result_handle.close()
@@ -199,14 +196,11 @@ class RTfetch:
 				Hit_to = int(topHit.findtext("Hit_hsps/Hsp/Hsp_hit-to"))
 				match = re.search(r'gi\|(\w+)\|',Hit_id)
 				GI = match.group(1)
-				# print >>fh,'Q: '+qseq
-				# print >>fh,"M: "+midseq
-				# print >>fh,"H: "+hseq
 				prefix = accessionNCBI[0:2]
 				# ** NOTE: based on following keys:
 				# 1) http://www.ncbi.nlm.nih.gov/RefSeq/key.html
 				# 2) http://www.ncbi.nlm.nih.gov/Sequin/acc.html
-				# TODO: improve robustness?
+				# TODO: improve robustness
 				flag = prefix == 'AC' or prefix == 'NC' or prefix == 'NG' or prefix == 'NT' or prefix == 'NW'\
 							or prefix == 'NZ' or prefix == 'NS' or prefix == 'AP' or prefix == 'BS' or prefix == 'AL'\
 							or prefix == 'BX' or prefix == 'CR' or prefix == 'CT' or prefix == 'CU' or prefix == 'FP'\
@@ -220,22 +214,14 @@ class RTfetch:
 					mapTuple = (uniprotID,accessionNCBI,dna_seq,'TBLASTN',midseq)
 					return mapTuple
 				else:
-					# print >>fh,('\tFor uniprot ID '+uniprotID+' and NCBI accession '+accessionNCBI+', problem with NCBI efetch sequence retrieval.')	# catch URL connection errors
-					# sys.stderr.write('\tFor uniprot ID '+uniprotID+' and NCBI accession '+accessionNCBI+', problem with NCBI efetch sequence retrieval.')	# catch URL connection errors
 					return mapTuple
 			except:
-				# print >>fh,'\tProblem with a) taxon access from Uniprot,\
-				 				 # \n\tb) reading organism specific tBLASTn,\
-								 # \n\tc) XML parsing of NCBI accession ID for the top hit' # catch URL connection errors
-				# sys.stderr.write('\tProblem with a) taxon access from Uniprot,\
-				# 				 \n\tb) reading organism specific tBLASTn,\
-				# 				 \n\tc) XML parsing of NCBI accession ID for the top hit')	# catch URL connection errors
 				return mapTuple
 
 		# chromParse: uses Entrez to parse DNA sequence out of chromosome according to BLAST output coordinates
 		# input: Chromosome GI number (0), Start coordinate (1), End coordinate (2)
 		# output: DNA sequence (0)
-		# NOTE: Biopython BLAST documentation: http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc81
+		# NOTE: BioPython BLAST documentation: http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc81
 		def chromParse(GI,start,end):
 			handle = Entrez.efetch(db="nucleotide", 
 						id=GI, 
@@ -249,7 +235,7 @@ class RTfetch:
 			handle.close()
 			return dna_seq
 
-		# tryNCBI: tries does uniprot --> NBCI nucleotide ID fetch
+		# tryNCBI: tries uniprot --> NBCI nucleotide ID fetch
 		# input: uniprot ID
 		# output: tuple (uniprot ID, NCBI nucleotid ID,DNA ORF matches to standard output
 		# NOTE: Programmatic Uniprot Access: http://www.uniprot.org/faq/28#id_mapping_examples
@@ -273,9 +259,10 @@ class RTfetch:
 				if len(ncbiIDs) > 2:						# If it is not empty, proceed
 					ncbiIDs = ncbiIDs[2:]
 					nucID = ncbiIDs[1]
-					# if prefix == 'AC' or prefix == 'NC' or prefix == 'NG' or prefix == 'NT' or prefix == 'NW'\
-					# 		or prefix == 'NZ' or prefix == 'NS':
-					# 	return 'pass'
+					# ** NOTE: based on following keys:
+					# 1) http://www.ncbi.nlm.nih.gov/RefSeq/key.html
+					# 2) http://www.ncbi.nlm.nih.gov/Sequin/acc.html
+					# TODO: improve robustness
 					if prefix == 'AC' or prefix == 'NC' or prefix == 'NG' or prefix == 'NT' or prefix == 'NW'\
 							or prefix == 'NZ' or prefix == 'NS' or prefix == 'AP' or prefix == 'BS' or prefix == 'AL'\
 							or prefix == 'BX' or prefix == 'CR' or prefix == 'CT' or prefix == 'CU' or prefix == 'FP'\
@@ -288,7 +275,6 @@ class RTfetch:
 					mapTuple = (uniprotID,nucID,Seq.tostring(),'NCBI')
 					handle.close()
 			except:
-				# sys.stderr.write('problem reading: '+url+' or performing Entrez efetch')	# catch URL connection errors
 				mapTuple = ()
 			return mapTuple
 
@@ -312,7 +298,6 @@ class RTfetch:
 				request = urllib2.Request(url, data)
 				response = urllib2.urlopen(request)			
 				ebiIDs = response.read(200000)
-				# print ebiIDs
 				ebiIDs = ebiIDs.split()					# Get out ids
 				response.close()
 				if len(ebiIDs) > 2:						# If it is not empty, proceed
@@ -329,14 +314,13 @@ class RTfetch:
 				mapTuple = (uniprotID,nucID,DNA,'EMBL')
 
 			except:
-				# sys.stderr.write('problem reading: '+url)	# catch URL connection errors
 				mapTuple = ()
 
 			return mapTuple
 
 		# getTaxon: get common name for organism corresponding to uniprot ID
 		# input: uniprot ID
-		# output: tuple
+		# output: organism common name
 		# NOTE: Programmatic Uniprot Access: http://www.uniprot.org/faq/28#id_mapping_examples
 		def getTaxon(uniprotID):
 			try:
@@ -347,11 +331,55 @@ class RTfetch:
 				taxName = match.group(1)
 				return taxName
 			except:			
-				# print >>fh,'problem with Uniprot URL connection, or regular expression parsing.' 	# catch URL connection errors
-				# sys.stderr.write('problem with Uniprot URL connection, or regular expression parsing.')
 				return 'null'
 
-		table = 1										# Translation Table for Biopython, see above
+		# getGeneticCode: for deducing organismically specific nucleotide translation table based on UniProt taxonomic lineage of query
+		# input: uniprot ID
+		# output: integer for genetic code 
+		# NOTE: Translation tables: http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
+		def getGeneticCode(uniprotID):
+			try:
+				value = 1 		# Preset: default genetic code integer value
+				TaxonomicLineage = []
+				ns = '{http://uniprot.org/uniprot}'
+				pageXML = urllib.urlopen('http://www.uniprot.org/uniprot/'+uniprotID+'.xml').read()
+				tree = xml.etree.ElementTree.fromstring(pageXML)
+				items = tree.getiterator(ns+'uniprot')
+				item = items[0]
+				taxa = item.find(ns+'entry').find(ns+'organism').find(ns+'lineage').findall(ns+'taxon')
+				for taxon in taxa:
+					TaxonomicLineage.append(taxon.text)
+				for taxon in TaxonomicLineage:
+					if taxon == 'Vertebrata':
+						value = 2
+					elif taxon == 'Saccharomyces' or taxon == 'Candida' or taxon == 'Hansenula' or taxon == 'Kluyveromyces':
+						value = 3
+					elif taxon == 'Entomoplasmatales' or taxon == 'Mycoplasmatales':
+						value = 4
+					elif taxon == 'Nematoda' or taxon == 'Mollusca' or taxon == 'Arthropoda':
+						value = 5
+					elif taxon == 'Ciliata' or taxon == 'Dasycladaceae' or taxon == 'Diplomonadida':
+						value = 6
+					elif taxon == 'Asterozoa' or taxon == 'Echinozoa' or taxon ==  'Rhabditophora':
+						value = 9
+					elif taxon == 'Bacteria' or taxon == 'Archaea':
+						value = 11
+					elif taxon == 'Ascidia':
+						value = 13
+					elif taxon == 'Chlorophyceae':
+						value = 16
+					elif taxon == 'Scenedesmus':
+						value = 22
+					elif taxon == 'Trematoda':
+						value = 21
+					elif taxon == 'Thraustochytrium':
+						value = 23
+					# elif taxon == 'Pterobranchia':
+					# 	value = 24
+				return value
+			except:			
+				return 1 		# Exceptional Case: throw default genetic code integer value
+
 		nucID = 'null'									# Set all default values to null for error catching
 		nucSequence = 'null'
 		aligned = 'null'
@@ -362,6 +390,7 @@ class RTfetch:
 		source = 'null'
 		mappedDNA = 'null'
 		proSeq = 'null'
+		table = getGeneticCode(uniprotID) 				# Translation Table for Biopython, default = 1 (standard genetic code)
 		doEMBL = True
 		quadTuple = tryNCBI(uniprotID)
 		if quadTuple == 'pass':
@@ -376,10 +405,7 @@ class RTfetch:
 			nucSequence = quadTuple[2]
 			dna_seq = Seq(nucSequence)
 			source = quadTuple[3]
-			(startORF, endORF, aligned, pID, mappedDNA) = orfFinder(dna_seq, table, min_pro_len, proSeq,source)	# Subroutine calls to determine
-																			# if matching ORF is present in the
-																		# nucleotide sequence and find the
-																			# start and stop indices.
+			(startORF, endORF, aligned, pID, mappedDNA) = orfFinder(dna_seq, table, min_pro_len, proSeq)
 		else: 
 			taxon = getTaxon(uniprotID)
 			if taxon != 'null':
@@ -393,10 +419,7 @@ class RTfetch:
 					dna_seq = Seq(nucSequence)
 					source = quadTuple[3]
 					aligned = quadTuple[4]						# Get aligned from BLAST rather than AlignIO
-					(startORF, endORF, dummy, pID, mappedDNA) = orfFinder(dna_seq, table, min_pro_len, proSeq,source)
-																				# if matching ORF is present in the
-																				# nucleotide sequence and find the
-																				# start and stop indices.
+					(startORF, endORF, dummy, pID, mappedDNA) = orfFinder(dna_seq, table, min_pro_len, proSeq)
 		outputTuple = (uniprotID, nucID, source, proSeq, nucSequence, aligned, pID, startORF, endORF, mappedDNA)
 		return outputTuple
 
