@@ -29,39 +29,25 @@ def makeSubtrees(ID, msa, tree, threshold):
 	#OLD: subprocess.call(["python kerf.py --msa-file " + ID + '/' + msa + " --tree-file " + ID + '/' + tree + " --output-directory " + ID + " --threshold " + str(threshold)], shell=True)
 	#TODO
 	#Should do some error handling
-	
-#Reads Kerf's msa_map.csv file and extracts the
-#number of subtree files that were generated
-def getNumSubTrees(ID):
-	numSubTrees = 0
-
-	if os.path.isfile(ID + '/msa_map.csv'):
-		msaMap = open(ID + '/msa_map.csv', 'rU')
-		for line in msaMap:
-			match = re.search(r'^(\d+)\,', line)
-			if match:
-				numSubTrees = int(match.group(1))
-				numSubTrees += 1 				#Since Kerf subtree files are indexed from 0
-	
-	return numSubTrees
 
 #Retreives DNA sequences for each subtree
-def getDNASeqs(ID):
+#from Kerf generated csv MSA map file
+def getDNASeqs(ID, msa):
+	numSubTrees = 0
+	listAccessionIDs = []
 
-	numSubTrees = getNumSubTrees(ID)
-
-	for i in xrange(0, numSubTrees):
+	if os.path.isfile(ID + '/' + msa.split('.')[0] + '.csv'):
+		msaMap = open(ID + '/' + msa.split('.')[0] + '.csv', 'rU')
 		#Retreive Uniprot Accession IDs from subtrees
 		#Restricted to Uniprot ID format listed at: http://www.uniprot.org/manual/accession_numbers
-		print 'Subtree #' + str(i)	#DEBUG: print subtree number
-		listAccessionIDs = ()
-		tree = Phylo.read(ID + '/' + str(i) + '.nh', 'newick')
-		for clade in tree.find_clades():
-			if clade.name:
-				match = re.search(r'\|([A-N,R-Z][0-9][A-Z][A-Z,0-9][A-Z,0-9][0-9]|[O-Q][0-9][A-Z,0-9][A-Z,0-9][A-Z,0-9][0-9])\|', clade.name)
-				if match:
-					print '\t' + match.group(1)	#DEBUG: print all accession IDs for this subtree
-					listAccessionIDs.append(match.group(1))
+		for line in msaMap:
+			match = re.search(r'^(\d+)\,.*\|([A-N,R-Z][0-9][A-Z][A-Z,0-9][A-Z,0-9][0-9]|[O-Q][0-9][A-Z,0-9][A-Z,0-9][A-Z,0-9][0-9])\|', line)
+			if match:
+				if numSubTrees != int(match.group(1)):
+					numSubTrees = int(match.group(1))
+					print 'Subtree #' + str(numSubTrees) #DEBUG: print subtree number
+				print '\t' + match.group(2)	#DEBUG: print all accession IDs for this subtree
+				listAccessionIDs.append(match.group(2))
 		#TODO
 		#Pass list of accession IDs to DNA sequence lookup script
 		
@@ -79,7 +65,7 @@ def main():
 	ID = time()									#Used to create directory to store files
 	initialize(str(ID), msa, tree)				#Create dir and move input files
 	makeSubtrees(str(ID), msa, tree, threshold)	#Run Kerf
-	getDNASeqs(str(ID))
+	getDNASeqs(str(ID), msa)
 
 
 if __name__ == '__main__':
