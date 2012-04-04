@@ -41,12 +41,14 @@ class RTfetch:
 		# NOTE: Reference BioPython code: http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc224
 		def orfFinder(seq, trans_table, targetLength, proSeq):
 			bestSoFar = 0 				# Set defaults
-			startSoFar = 0 				# ^
+			gapsSoFar = targetLength*3	# ^
+			startSoFar = 0 				# |
 			pStartSoFar = 0 			# |
 			pEndSoFar = 0 				# |
 			endSoFar = 0 				# |
 			pidSoFar = 0 				# |
 			alignedSoFar = '' 			# |
+			querySoFar = ''				# |
 			mappedSeq = '' 				# |
 			seq_len = len(seq)			# length of original protein sequence, for the purpose of indexing start and end indices
 			for strand, nuc in [(+1, seq), (-1, seq.reverse_complement())]:	# Forward vs. Reverse frames
@@ -62,12 +64,12 @@ class RTfetch:
 						# ** current heuristic: only look for nucleotide sequences which code for proteins 3/4ths to 5/4ths of target size
 						# -->  May want to refine this at some point
 						if 1.25*targetLength >= aa_end-aa_start >= 0.75*targetLength:
-							(percentID, aligned) = getpID(trans[aa_start:aa_end].lower(),proSeq.lower())
-							if int(percentID) > 99:					# If it is almost a perfect match
+							(percentID, aligned, alignedQuery, gaps) = getpID(trans[aa_start:aa_end].lower(),proSeq.lower())
+							if gaps == 0:				# If it is a perfect match
 								if strand == 1:						# Forward frame
 									start = max(0,frame+aa_start*3)			# start index (w/ max because aa_start + frame may be less than 0)
 									end = min(seq_len,frame+aa_end*3+3)		# end index (w/ +3 at end because frame goes negative instead of positive)
-									mappedSeq = mapDNA(start,end,seq,aligned)	# Call DNA mapping subroutine to map DNA to aligned protein to query
+									mappedSeq = mapDNA(start,end,seq,aligned,alignedQuery)	# Call DNA mapping subroutine to map DNA to aligned protein to query
 								else:								# Reverse frame
 									start = max(0,seq_len-frame-aa_end*3-3)	# Backwards case, so everything is effectively reversed
 									end = seq_len-frame-aa_start*3 			# end index is now at the beginning, so subtract off AA start
@@ -75,9 +77,11 @@ class RTfetch:
 									mappedSeq = Seq(mappedDNA)					# RevComp the DNA sequence
 									mappedSeq = mappedSeq.reverse_complement()
 								return (end,start,aligned,int(percentID),str(mappedSeq)) # Flip Start and End indices because of start and stop index
-							elif int(percentID) > bestSoFar:	# Trying to maximize percent identity
+							# elif int(percentID) > bestSoFar:	# Trying to maximize percent identity
+							elif gaps < gapsSoFar:	# Trying to maximize percent identity
 																# (See isoform discussion: http://www.uniprot.org/faq/30)
-								bestSoFar = int(percentID)
+								# bestSoFar = int(percentID)
+								gapsSoFar = gaps
 								if strand == 1:
 									start = max(0,frame+aa_start*3)
 									end = min(seq_len,frame+aa_end*3+3)
@@ -87,26 +91,30 @@ class RTfetch:
 								startSoFar = start
 								endSoFar = end
 								alignedSoFar = aligned
+								querySoFar = alignedQuery
 								pidSoFar = percentID
 						aa_start = aa_start+1
-			mappedDNA = mapDNA(startSoFar,endSoFar,seq,alignedSoFar)
+			mappedDNA = mapDNA(startSoFar,endSoFar,seq,alignedSoFar,querySoFar)
 			return (startSoFar,endSoFar,alignedSoFar,int(pidSoFar),mappedDNA)
 
 		# mapDNA: mapping DNA sequence to the Needleman-Wunsch aligned protein to the original protein query
 		# input: start index (0), end index (1), dna (2), aligned protein (3)
 		# output: mapped DNA sequence
-		def mapDNA(startIndex,endIndex,dna,alignedProtein):
+		def mapDNA(startIndex,endIndex,dna,alignedProtein,alignedQuery):
 			dna = str(dna)
 			mapped = ''
 			dnaCounter = startIndex
 			protCounter = 0
 			while(protCounter < len(alignedProtein)):	# While you have not surpassed the length of the aligned protein sequence
-				if(alignedProtein[protCounter] == ' ' or alignedProtein[protCounter] == '-'):
-					mapped = mapped + '---'				# For each gap in the protein alignment, insert three gaps in the DNA alignment
+				if alignedProtein[protCounter] == '-':	# If it is a gap in the translated sequence, then add '---' but
+					mapped = mapped + '---'					# don't skip forward in the DNA sequence yet
+				elif alignedProtein[protCounter] != alignedQuery[protCounter]:
+					mapped = mapped + '---'				# Insert three gaps '---' in the DNA alignment and also skip ahead in the DNA
+					dnaCounter = dnaCounter + 3 			# because the current AA was mismatched
 				else:
 					mapped = mapped + dna[dnaCounter:dnaCounter+3]	# Otherwise, insert the next three nucleic acids
 					dnaCounter = dnaCounter + 3 					# and increment both counters
-				protCounter = protCounter + 1 							# instead of just one.
+				protCounter = protCounter + 1 			# In all cases, move foward in the aligned protein sequences
 			return mapped
 
 		# pID: pairwise alignment subroutine (Adapted and modified from below source)
@@ -126,6 +134,7 @@ class RTfetch:
 			alignment = AlignIO.read(needle,"emboss")		# AlignIO BioPython Module reads out EMBOSS globally aligned sequences
 			i=0 									 # Global alignment --> only 1 counter necessary for both sequences
 			counter = 0 							 # Global counter
+			gaps = 0
 			sequence0 = alignment[0]
 			sequence1 = alignment[1]
 			seq0 = str(sequence0.seq)
@@ -136,7 +145,8 @@ class RTfetch:
 				topAA = list0[counter]
 				bottomAA = list1[counter]
 				# Considers gaps and mismatches in both sequences for computing percent identity
-				if topAA == '-' or topAA == ' ' or  bottomAA == '-' or bottomAA == ' ' or topAA != bottomAA:
+				if topAA != bottomAA:
+					gaps = gaps + 1
 					pass
 				else:
 					i = i + 1
@@ -144,7 +154,7 @@ class RTfetch:
 			percent = 100*i/len(seq0)
 			os.remove('tempA.fasta')	# Remove these temporary files that you no longer need
 			os.remove('tempB.fasta')
-			return (str(percent),seq0.upper())
+			return (str(percent),seq0.upper(),seq1.upper(), gaps)
 
 		# orfLength: determines length of ORFs based on protein sequence length via uniprot query
 		# input: uniprot ID (0)
@@ -170,12 +180,12 @@ class RTfetch:
 			except:
 				# print >>fh,'problem reading: '+url+' or performing Entrez efetch' # catch URL connection errors
 				# sys.stderr.write('problem reading: '+url+' or performing Entrez efetch')	# catch URL connection errors
-				dna_seq = ''
+				dna_seq = 'null'
 			return dna_seq
 
 		# taxBLASTn: tries does uniprot --> NBCI nucleotide ID fetch
 		# input: uniprot ID (0), common taxonomic organism name (1)
-		# output: tuple (uniprot ID, NCBI nucleotid ID,DNA ORF matches to standard output
+		# output: tuple (uniprot ID, NCBI nucleotide ID,DNA ORF matches to standard output
 		# NOTE: BioPython BLAST documentation: http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc81
 		def taxBLASTn(uniprotID,taxName,proSeq):
 			mapTuple = ()
@@ -350,30 +360,32 @@ class RTfetch:
 				for taxon in taxa:
 					TaxonomicLineage.append(taxon.text)
 				for taxon in TaxonomicLineage:
-					if taxon == 'Vertebrata':
-						value = 2
-					elif taxon == 'Saccharomyces' or taxon == 'Candida' or taxon == 'Hansenula' or taxon == 'Kluyveromyces':
-						value = 3
-					elif taxon == 'Entomoplasmatales' or taxon == 'Mycoplasmatales':
-						value = 4
-					elif taxon == 'Nematoda' or taxon == 'Mollusca' or taxon == 'Arthropoda':
-						value = 5
-					elif taxon == 'Ciliata' or taxon == 'Dasycladaceae' or taxon == 'Diplomonadida':
-						value = 6
-					elif taxon == 'Asterozoa' or taxon == 'Echinozoa' or taxon ==  'Rhabditophora':
+					# NOTE: need to be careful with these, alternative translation may apply to some
+					# sequences from the specific taxa but not others (i.e. only MITOCHONDRIAL sequences...)
+					# if taxon == 'Vertebrata':
+					# 	value = 2
+					# elif taxon == 'Saccharomyces' or taxon == 'Candida' or taxon == 'Hansenula' or taxon == 'Kluyveromyces':
+					# 	value = 3
+					# elif taxon == 'Entomoplasmatales' or taxon == 'Mycoplasmatales':
+					# 	value = 4
+					# elif taxon == 'Nematoda' or taxon == 'Mollusca' or taxon == 'Arthropoda':
+					# 	value = 5
+					# elif taxon == 'Ciliata' or taxon == 'Dasycladaceae' or taxon == 'Diplomonadida':
+					# 	value = 6
+					if taxon == 'Asterozoa' or taxon == 'Echinozoa' or taxon ==  'Rhabditophora':
 						value = 9
 					elif taxon == 'Bacteria' or taxon == 'Archaea':
 						value = 11
-					elif taxon == 'Ascidia':
-						value = 13
-					elif taxon == 'Chlorophyceae':
-						value = 16
-					elif taxon == 'Scenedesmus':
-						value = 22
-					elif taxon == 'Trematoda':
-						value = 21
-					elif taxon == 'Thraustochytrium':
-						value = 23
+					# elif taxon == 'Ascidia':
+					# 	value = 13
+					# elif taxon == 'Chlorophyceae':
+					# 	value = 16
+					# elif taxon == 'Scenedesmus':
+					# 	value = 22
+					# elif taxon == 'Trematoda':
+					# 	value = 21
+					# elif taxon == 'Thraustochytrium':
+					# 	value = 23
 					# elif taxon == 'Pterobranchia':
 					# 	value = 24
 				return value
