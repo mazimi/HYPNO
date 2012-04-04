@@ -6,8 +6,9 @@ import shutil
 import argparse
 from Bio import AlignIO, Phylo
 from Bio.Align import MultipleSeqAlignment
-import subprocess
+from kerf import Kerf
 import re
+import DNA2ProtAlign
 
 
 #Creates a temporary directory to store data files
@@ -16,14 +17,19 @@ def initialize(ID, msa, tree):
 	shutil.move(msa, ID)
 	shutil.move(tree, ID)
 
-#Runs kerf.py as a subprocess to split trees into
+#Calls kerf as a class to split trees into
 #subtrees based on given threshold
 def makeSubtrees(ID, msa, tree, threshold):
-	subprocess.call(["python kerf.py --msa-file " + ID + '/' + msa + " --tree-file " + ID + '/' + tree + " --output-directory " + ID + " --threshold " + str(threshold)], shell=True)
+	fileMSA = str(msa)
+	fileTree = str(tree)
+	threshold = float(threshold)
+	outputDir = str(ID)
+	kerfTree = Kerf()
+	kerfTree.kerfRun( fileTree, fileMSA, threshold, outputDir)
+	#OLD: subprocess.call(["python kerf.py --msa-file " + ID + '/' + msa + " --tree-file " + ID + '/' + tree + " --output-directory " + ID + " --threshold " + str(threshold)], shell=True)
 	#TODO
 	#Should do some error handling
-	#NOTE: Kerf craps out if threshold is above highest PID in tree (ie. no branches to prune, use threshold 100.0 to reproduce). Need to fix this.
-
+	
 #Reads Kerf's msa_map.csv file and extracts the
 #number of subtree files that were generated
 def getNumSubTrees(ID):
@@ -47,13 +53,15 @@ def getDNASeqs(ID):
 	for i in xrange(0, numSubTrees):
 		#Retreive Uniprot Accession IDs from subtrees
 		#Restricted to Uniprot ID format listed at: http://www.uniprot.org/manual/accession_numbers
-		print 'Subtree #' + str(i)
+		print 'Subtree #' + str(i)	#DEBUG: print subtree number
+		listAccessionIDs = ()
 		tree = Phylo.read(ID + '/' + str(i) + '.nh', 'newick')
 		for clade in tree.find_clades():
 			if clade.name:
 				match = re.search(r'\|([A-N,R-Z][0-9][A-Z][A-Z,0-9][A-Z,0-9][0-9]|[O-Q][0-9][A-Z,0-9][A-Z,0-9][A-Z,0-9][0-9])\|', clade.name)
 				if match:
-					print '\t' + match.group(1)
+					print '\t' + match.group(1)	#DEBUG: print all accession IDs for this subtree
+					listAccessionIDs.append(match.group(1))
 		#TODO
 		#Pass list of accession IDs to DNA sequence lookup script
 		
