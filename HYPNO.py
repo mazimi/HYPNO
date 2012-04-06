@@ -11,7 +11,7 @@ from Bio.SeqRecord import SeqRecord
 from kerf import Kerf
 import re
 from RTfetch import RTfetch
-import DNA2ProtAlign
+from DNA2ProtAlign import DNA2ProtAlign
 import genTree
 
 
@@ -82,9 +82,9 @@ def getDNASeqs(ID, msa):
 #TODO: Determine if DNA should be re-aligned
 def alignDNASeqs(ID, msa, numSubTrees):
 	for i in xrange(1, numSubTrees+1):
-		fileProt = ID + '/' + msa.split('.')[0] + 'sf' + int(i) + '.a2m'
+		fileProt = ID + '/' + msa.split('.')[0] + 'sf' + str(i) + '.a2m'
 		fileDNA = ID + '/DNAseqs' + str(i) + '.fasta'
-		fileOutput = ID + '/' + 'subtree' + int(i) + '.a2m'
+		fileOutput = ID + '/' + 'subtree' + str(i) + '.a2m'
 
 		myDNA = DNA2ProtAlign()
 		myDNA.alignDNAseqs(fileProt, fileDNA, fileOutput)
@@ -94,8 +94,8 @@ def alignDNASeqs(ID, msa, numSubTrees):
 def makeSubTrees(ID, numSubTrees):
 	#TODO: Is A2M = Aligned FASTA? If not, convert. How to handle lower case columns? Delete?
 	for i in xrange(1,numSubTrees+1):
-		MSA = ID + '/' + 'subtree' + int(i) + '.a2m'
-		outputName = ID + '/' + 'subtree' + int(i) + '.ml'
+		MSA = ID + '/' + 'subtree' + str(i) + '.a2m'
+		outputName = ID + '/' + 'subtree' + str(i) + '.ml'
 
 		myTree = GenTree()
 		myTree.makeTree(MSA , outputName)
@@ -125,7 +125,7 @@ def main():
 	initialize(str(ID), msa, tree)				#Create dir and move input files
 	makeSubtrees(str(ID), msa, tree, threshold)	#Run Kerf
 	numSubTrees = getDNASeqs(str(ID), msa)
-	#alignDNASeqs(str(ID, msa, numSubTrees)
+	alignDNASeqs(str(ID), msa, numSubTrees)
 	#makeSubTrees(str(ID), numSubTrees)
 	#mergeTree(str(ID), numSubTrees)
 
