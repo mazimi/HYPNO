@@ -7,7 +7,7 @@ from Bio.Blast import NCBIWWW
 from Bio.Seq import Seq
 import urllib,urllib2, sys, re, xml, os
 
-# NOTES: Requires ElementTree module, EMBOSS package, and BioPython for functionality
+# Installation Requirements: ElementTree module, EMBOSS package, and BioPython for functionality
 
 class RTfetch:
 
@@ -18,39 +18,39 @@ class RTfetch:
 		Entrez.email = 'timanoed154@yahoo.com'				# mandatory NCBI email for reference
 
 	# getSeqID: Delegates nucleotide sequence fetch
-		# input: uniprotID (0)
-		# output: prints uniprot ID, nucleotide ID + DNA ORF matches to standard output, or error message if unsuccesful
+		# input: self (0), uniprotID (1)
+		# output: 10 element tuple of nucleotide fetch details (see below)
 		# NOTE: Programmatic Uniprot Access: http://www.uniprot.org/faq/28#id_mapping_examples
 			# Tuple indices:
-			# (1) Uniprot ID query
-			# (2) Nucleotide ID (default = 'null')
-			# (3) Database source (EMBL, NCBI, TBLASTN, default = 'null')
-			# (4) Protein sequence (default = 'null')
-			# (5) DNA sequence (default = 'null')
-			# (6) Aligned protein hit (default = 'null')
-			# (7) Percent identity (default = 'null')
-			# (8) ORF starting index (default = 'null')
-			# (9) ORF ending index (default = 'null')
-			# (10) Mapped DNA sequence (default = 'null')
+			# (0) Uniprot ID query
+			# (1) Nucleotide ID (default = 'null')
+			# (2) Database source (EMBL, NCBI, TBLASTN, default = 'null')
+			# (3) Protein sequence (default = 'null')
+			# (4) DNA sequence (default = 'null')
+			# (5) Aligned protein hit (default = 'null')
+			# (6) Percent identity (default = 'null')
+			# (7) ORF starting index (default = 'null')
+			# (8) ORF ending index (default = 'null')
+			# (9) Mapped DNA sequence (default = 'null')
 	def getSeqID(self, uniprotID):
 
 		# orfFinder: 6 frame ORF search on nucleotide sequence (adapted & modified from BioPython Cookbook, like below)
 		# input: nucleic acid sequence (0), translation table integer value (1), target protein length (2),
 		#			protein sequence for pairwise alignment comparisons (3)
 		# output: Start Index of Hit (0), End Index of Hit (1), flag = 1 (2) OR flag = 0 (0)
-		# NOTE: Reference BioPython code: http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc224
+		# NOTE: adapted based on BioPython code: http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc224
 		def orfFinder(seq, trans_table, targetLength, proSeq):
-			bestSoFar = 0 				# Set defaults
-			gapsSoFar = targetLength*3	# ^
-			startSoFar = 0 				# |
-			pStartSoFar = 0 			# |
-			pEndSoFar = 0 				# |
-			endSoFar = 0 				# |
-			pidSoFar = 0 				# |
-			alignedSoFar = '' 			# |
-			querySoFar = ''				# |
-			mappedSeq = '' 				# |
-			seq_len = len(seq)			# length of original protein sequence, for the purpose of indexing start and end indices
+			bestSoFar = 0 					# Set defaults
+			gapsSoFar = targetLength*3		# ^
+			startSoFar = 0 					# |
+			pStartSoFar = 0 				# |
+			pEndSoFar = 0 					# |
+			endSoFar = 0 					# |
+			pidSoFar = 0 					# |
+			alignedSoFar = '' 				# |
+			querySoFar = ''					# |
+			mappedSeq = '' 					# |
+			seq_len = len(seq)				# length of original protein sequence, for discriminatory ORF finding
 			for strand, nuc in [(+1, seq), (-1, seq.reverse_complement())]:	# Forward vs. Reverse frames
 				for frame in range(3):											# 3 reading frames for each
 					trans = str(nuc[frame:].translate(trans_table))
@@ -58,7 +58,7 @@ class RTfetch:
 					aa_start = 0
 					aa_end = 0
 					while aa_start < trans_len:
-						aa_end = trans.find("*", aa_start)					# find ter (stop) codon, labeled as '*'
+						aa_end = trans.find("*", aa_start)	# find ter (stop) codon, labeled as '*'
 						if aa_end == -1:
 							aa_end = trans_len
 						# ** current heuristic: only look for nucleotide sequences which code for proteins 3/4ths to 5/4ths of target size
@@ -77,10 +77,8 @@ class RTfetch:
 									mappedSeq = Seq(mappedDNA)					# RevComp the DNA sequence
 									mappedSeq = mappedSeq.reverse_complement()
 								return (end,start,aligned,int(percentID),str(mappedSeq)) # Flip Start and End indices because of start and stop index
-							# elif int(percentID) > bestSoFar:	# Trying to maximize percent identity
 							elif gaps < gapsSoFar:	# Trying to maximize percent identity
-																# (See isoform discussion: http://www.uniprot.org/faq/30)
-								# bestSoFar = int(percentID)
+													# (See isoform discussion: http://www.uniprot.org/faq/30)
 								gapsSoFar = gaps
 								if strand == 1:
 									start = max(0,frame+aa_start*3)
@@ -98,7 +96,7 @@ class RTfetch:
 			return (startSoFar,endSoFar,alignedSoFar,int(pidSoFar),mappedDNA)
 
 		# mapDNA: mapping DNA sequence to the Needleman-Wunsch aligned protein to the original protein query
-		# input: start index (0), end index (1), dna (2), aligned protein (3)
+		# input: start index (0), end index (1), dna (2), aligned translated protein (3), aligned original query (4)
 		# output: mapped DNA sequence
 		def mapDNA(startIndex,endIndex,dna,alignedProtein,alignedQuery):
 			dna = str(dna)
@@ -106,10 +104,10 @@ class RTfetch:
 			dnaCounter = startIndex
 			protCounter = 0
 			while(protCounter < len(alignedProtein)):	# While you have not surpassed the length of the aligned protein sequence
-				if alignedProtein[protCounter] == '-':	# If it is a gap in the translated sequence, then add '---' but
-					mapped = mapped + '---'					# don't skip forward in the DNA sequence yet
+				if alignedProtein[protCounter] == '-':	# If it is a gap in the translated sequence, then add '***' but
+					mapped = mapped + '***'					# don't skip forward in the DNA sequence yet
 				elif alignedProtein[protCounter] != alignedQuery[protCounter]:
-					mapped = mapped + '---'				# Insert three gaps '---' in the DNA alignment and also skip ahead in the DNA
+					mapped = mapped + '***'				# Insert three gaps '***' in the DNA alignment and also skip ahead in the DNA
 					dnaCounter = dnaCounter + 3 			# because the current AA was mismatched
 				else:
 					mapped = mapped + dna[dnaCounter:dnaCounter+3]	# Otherwise, insert the next three nucleic acids
@@ -121,7 +119,7 @@ class RTfetch:
 		# input: 2 nucleotide sequences (0,1)
 		# output: integer value between 0 and 100 (0), aligned translated protein sequence (1)
 		# NOTE: Uses EMBOSS package needle executable call
-		# NOTE: Prints to temporary file handle tempAlign.needle
+		# NOTE: Creates, prints to, and reads from local file tempAlign.needle
 		def getpID(target,template):											
 			seqA = open('tempA.fasta', 'w')			# Print sequences to temporary files for EMBOSS needle call
 			seqB = open('tempB.fasta', 'w')				
@@ -131,7 +129,7 @@ class RTfetch:
 			seqB.close()
 			os.system('needle -asequence tempA.fasta -sprotein1 -bsequence tempB.fasta -sprotein2 -gapopen 10 -gapextend 0.5 -outfile tempAlign.needle -auto')
 			needle = open('tempAlign.needle','rU')
-			alignment = AlignIO.read(needle,"emboss")		# AlignIO BioPython Module reads out EMBOSS globally aligned sequences
+			alignment = AlignIO.read(needle,"emboss")# AlignIO BioPython Module reads out EMBOSS globally aligned sequences
 			i=0 									 # Global alignment --> only 1 counter necessary for both sequences
 			counter = 0 							 # Global counter
 			gaps = 0
@@ -229,7 +227,7 @@ class RTfetch:
 				return mapTuple
 
 		# chromParse: uses Entrez to parse DNA sequence out of chromosome according to BLAST output coordinates
-		# input: Chromosome GI number (0), Start coordinate (1), End coordinate (2)
+		# input: chromosome GI number (0), start coordinate (1), end coordinate (2)
 		# output: DNA sequence (0)
 		# NOTE: BioPython BLAST documentation: http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc81
 		def chromParse(GI,start,end):
@@ -269,6 +267,7 @@ class RTfetch:
 				if len(ncbiIDs) > 2:						# If it is not empty, proceed
 					ncbiIDs = ncbiIDs[2:]
 					nucID = ncbiIDs[1]
+					prefix = nucID[0:2]
 					# ** NOTE: based on following keys:
 					# 1) http://www.ncbi.nlm.nih.gov/RefSeq/key.html
 					# 2) http://www.ncbi.nlm.nih.gov/Sequin/acc.html
@@ -418,6 +417,8 @@ class RTfetch:
 			dna_seq = Seq(nucSequence)
 			source = quadTuple[3]
 			(startORF, endORF, aligned, pID, mappedDNA) = orfFinder(dna_seq, table, min_pro_len, proSeq)
+			outputTuple = (uniprotID, nucID, source, proSeq, nucSequence, aligned, pID, startORF, endORF, mappedDNA)
+			return outputTuple
 		else: 
 			taxon = getTaxon(uniprotID)
 			if taxon != 'null':
@@ -432,8 +433,8 @@ class RTfetch:
 					source = quadTuple[3]
 					aligned = quadTuple[4]						# Get aligned from BLAST rather than AlignIO
 					(startORF, endORF, dummy, pID, mappedDNA) = orfFinder(dna_seq, table, min_pro_len, proSeq)
-		outputTuple = (uniprotID, nucID, source, proSeq, nucSequence, aligned, pID, startORF, endORF, mappedDNA)
-		return outputTuple
+			outputTuple = (uniprotID, nucID, source, proSeq, nucSequence, aligned, pID, startORF, endORF, mappedDNA)
+			return outputTuple
 
 if __name__ == '__main__':
 	sys.exit(1)
