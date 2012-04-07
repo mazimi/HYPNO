@@ -7,7 +7,6 @@
 from Bio import SeqIO, Seq
 import sys
 
-
 class DNA2ProtAlign:
 
 	# __init__: Constructor method
@@ -52,6 +51,7 @@ class DNA2ProtAlign:
 		#Reverse-translate protein to corresponding DNA sequence using the codon
 		#that is found to occur in nature.
 		def translateProt2DNAmsa(seqProt, seqDNA):
+			checkCodons = False	#Set 'True' to check that codons match residues
 			#Make sure number of DNA sequences matches number of proteins aligned
 			if len(seqProt) != len(seqDNA):
 				return
@@ -74,10 +74,13 @@ class DNA2ProtAlign:
 						if str(seqDNA[i][indexDNA*3:indexDNA*3+3]) == '***':
 							currSeq += '---'	#TODO: Currently treat as gaps, change to consensus
 						else:
-							if str(Seq.translate(seqDNA[i][indexDNA*3:indexDNA*3+3])) == str(seqProt[i][j]):
-								currSeq += seqDNA[i][indexDNA*3:indexDNA*3+3]
+							if checkCodons:
+								if str(Seq.translate(seqDNA[i][indexDNA*3:indexDNA*3+3])) == str(seqProt[i][j]):
+									currSeq += seqDNA[i][indexDNA*3:indexDNA*3+3]
+								else:
+									currSeq += '!!!'
 							else:
-								currSeq += '!!!'
+								currSeq += seqDNA[i][indexDNA*3:indexDNA*3+3]
 						indexDNA += 1
 					else:
 						#Grab next Lower Case codon in seq, check to make sure it codes for current AA,
@@ -87,11 +90,14 @@ class DNA2ProtAlign:
 						if str(seqDNA[i][indexDNA*3:indexDNA*3+3]) == '***':
 							currSeq += '---'	#TODO: Currently treat as gaps, change to consensus
 						else:
-							upperSeqProtein = seqProt[i][j].upper()
-							if str(Seq.translate(seqDNA[i][indexDNA*3:indexDNA*3+3])) == str(upperSeqProtein):
-								currSeq += seqDNA[i][indexDNA*3:indexDNA*3+3].lower()
+							if checkCodons:
+								upperSeqProtein = seqProt[i][j].upper()
+								if str(Seq.translate(seqDNA[i][indexDNA*3:indexDNA*3+3])) == str(upperSeqProtein):
+									currSeq += seqDNA[i][indexDNA*3:indexDNA*3+3].lower()
+								else:
+									currSeq += '!!!'
 							else:
-								currSeq += '!!!'
+								currSeq += seqDNA[i][indexDNA*3:indexDNA*3+3].lower()
 						indexDNA += 1
 				msaDNA.append(currSeq)
 
