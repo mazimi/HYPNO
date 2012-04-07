@@ -103,9 +103,16 @@ class RTfetch:
 			mapped = ''
 			dnaCounter = startIndex
 			protCounter = 0
+			print "print"
+			Start alignedProtein
+			print
+			print alignedQuery
+			print
 			while(protCounter < len(alignedProtein)):	# While you have not surpassed the length of the aligned protein sequence
 				if alignedProtein[protCounter] == '-':	# If it is a gap in the translated sequence, then add '***' but
 					mapped = mapped + '***'					# don't skip forward in the DNA sequence yet
+				elif alignedQuery[protCounter] == '-':	# If it is a gap in the original sequence, this corresponds to an insertion
+					pass									# so don't insert any gaps
 				elif alignedProtein[protCounter] != alignedQuery[protCounter]:
 					mapped = mapped + '***'				# Insert three gaps '***' in the DNA alignment and also skip ahead in the DNA
 					dnaCounter = dnaCounter + 3 			# because the current AA was mismatched
