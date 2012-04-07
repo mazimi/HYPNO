@@ -12,7 +12,7 @@ from kerf import Kerf
 import re
 from RTfetch import RTfetch
 from DNA2ProtAlign import DNA2ProtAlign
-import genTree
+from GenTree import GenTree
 
 
 #Creates a temporary directory to store data files
@@ -126,7 +126,7 @@ def main():
 	makeSubtrees(str(ID), msa, tree, threshold)	#Run Kerf
 	numSubTrees = getDNASeqs(str(ID), msa)
 	alignDNASeqs(str(ID), msa, numSubTrees)
-	#makeSubTrees(str(ID), numSubTrees)
+	makeSubTrees(str(ID), numSubTrees)
 	#mergeTree(str(ID), numSubTrees)
 
 
