@@ -66,15 +66,32 @@ class DNA2ProtAlign:
 						currSeq += '---'
 					elif seqProt[i][j] =='.':
 						currSeq += '...'
-					else:
-						#Grab next codon in seq, check to make sure it codes for current AA,
-						#if match, place codon in DNA MSA sequence, if no match, place '!!!',
+					elif seqProt[i][j].isupper() == True:
+						#Grab next Upper Case codon in seq, check to make sure it codes for current AA,
+						#if match, place Upper Casecodon in DNA MSA sequence, if no match, place '!!!',
 						#move on to next codon.
 						#TODO: How should mismatches be handled?
-						if str(Seq.translate(seqDNA[i][indexDNA*3:indexDNA*3+3])) == str(seqProt[i][j]):
-							currSeq += seqDNA[i][indexDNA*3:indexDNA*3+3]
+						if str(seqDNA[i][indexDNA*3:indexDNA*3+3]) == '***':
+							currSeq += '---'	#TODO: Currently treat as gaps, change to consensus
 						else:
-							currSeq += '!!!'
+							if str(Seq.translate(seqDNA[i][indexDNA*3:indexDNA*3+3])) == str(seqProt[i][j]):
+								currSeq += seqDNA[i][indexDNA*3:indexDNA*3+3]
+							else:
+								currSeq += '!!!'
+						indexDNA += 1
+					else:
+						#Grab next Lower Case codon in seq, check to make sure it codes for current AA,
+						#if match, place Lower Case codon in DNA MSA sequence, if no match, place '!!!',
+						#move on to next codon.
+						#TODO: How should mismatches be handled?
+						if str(seqDNA[i][indexDNA*3:indexDNA*3+3]) == '***':
+							currSeq += '---'	#TODO: Currently treat as gaps, change to consensus
+						else:
+							upperSeqProtein = seqProt[i][j].upper()
+							if str(Seq.translate(seqDNA[i][indexDNA*3:indexDNA*3+3])) == str(upperSeqProtein):
+								currSeq += seqDNA[i][indexDNA*3:indexDNA*3+3].lower()
+							else:
+								currSeq += '!!!'
 						indexDNA += 1
 				msaDNA.append(currSeq)
 
