@@ -39,21 +39,30 @@ def makeSubtrees(ID, msa, tree, threshold):
 def getDNASeqs(ID, msa):
 	numSubTrees = 0
 	listAccessionIDs = [[]]
+	listLongID = [[]]
+	treeHierarchy = []
 
 	#Extract Uniprot IDs from Kerf CSV output
 	if os.path.isfile(ID + '/' + msa.split('.')[0] + '.csv'):
 		msaMap = open(ID + '/' + msa.split('.')[0] + '.csv', 'rU')
 		#Retreive Uniprot Accession IDs from subtrees
 		#Restricted to Uniprot ID format listed at: http://www.uniprot.org/manual/accession_numbers
+		i = 0
 		for line in msaMap:
 			match = re.search(r'^(\d+)\,.*\|([A-N,R-Z][0-9][A-Z][A-Z,0-9][A-Z,0-9][0-9]|[O-Q][0-9][A-Z,0-9][A-Z,0-9][A-Z,0-9][0-9])\|', line)
 			if match:
 				if numSubTrees != int(match.group(1)):
 					numSubTrees = int(match.group(1))
 					listAccessionIDs.append([])
+					listLongID.append([])
+					treeHierarchy.append(0)
+					i += 1
 					#print 'Subtree #' + str(numSubTrees) #DEBUG: print subtree number
 				#print '\t' + match.group(2)	#DEBUG: print all accession IDs for this subtree
 				listAccessionIDs[numSubTrees].append(match.group(2))
+				longMatch = re.search(r'^(\d+)\,\s(.*)\n', line)
+				listLongID[numSubTrees].append(longMatch.group(2))
+				treeHierarchy[i-1] += 1
 		#TODO
 		#Pass list of accession IDs to DNA sequence lookup script (uniprot.py)
 		#Create FASTA files with DNA sequence for each clade (uniprot.py)
@@ -62,19 +71,21 @@ def getDNASeqs(ID, msa):
 	for i in xrange(1, numSubTrees+1):
 		DNASeqs2Write = []
 		nucFetch = RTfetch()
-		print 'Subtree #' + str(i) #DEBUG: print subtree number
+		#print 'Subtree #' + str(i) #DEBUG: print subtree number
 		
+		j = 0
 		for uniprotID in listAccessionIDs[i]:
 			nucFetchTuple = nucFetch.getSeqID(uniprotID)
-			DNASeqs2Write.append(SeqRecord(Seq(nucFetchTuple[9]), id=uniprotID, description="HYPNO FASTA Output"))
-			print '\t' + uniprotID + ' - ' + nucFetchTuple[9] + '\n' #DEBUG: print uniprot ID and sequence
+			DNASeqs2Write.append(SeqRecord(Seq(nucFetchTuple[9]), id=listLongID[i][j], description="HYPNO FASTA Output"))
+			#print '\t' + uniprotID + ' - ' + nucFetchTuple[9] + '\n' #DEBUG: print uniprot ID and sequence
+			j += 1
 
 		#Write DNA sequences for each subtree to file
 		output_handle = open(ID + '/DNAseqs' + str(i) + '.fasta', 'w')
 		SeqIO.write(DNASeqs2Write, output_handle, "fasta")
 		output_handle.close()
 
-	return numSubTrees
+	return numSubTrees, treeHierarchy, listLongID
 
 #For all subtrees, takes protein alignment and
 #retreived DNA sequence and inserts DNA into
@@ -104,11 +115,17 @@ def makeSubTrees(ID, numSubTrees):
 #Takes newick format output of each subtree
 #and places back into site where it was
 #pruned in original tree
-def mergeTree(ID, numSubTrees):
-	#TODO: will likely need manual re-insertion to do opposite of KERF
-	#		re-calculate lengths (FastTree?)
+def mergeTree(ID, tree, treeHierarchy, listLongID):
+	#TODO: re-calculate lengths (FastTree?)
+	tree = ID + '/' + tree
 
-	numSubTrees = 'changethis'
+	myTree = GenTree()
+	prunedTree = myTree.pruneTree(tree, treeHierarchy, listLongID)
+	mergedTree = myTree.insertSubTrees(ID, prunedTree, treeHierarchy)
+
+	output_handle = open(ID + '/hybridTree.ml', "w")
+	output_handle.write(mergedTree)
+	output_handle.close()
 
 
 def main():
@@ -124,10 +141,10 @@ def main():
 	ID = time()									#Used to create directory to store files
 	initialize(str(ID), msa, tree)				#Create dir and move input files
 	makeSubtrees(str(ID), msa, tree, threshold)	#Run Kerf
-	numSubTrees = getDNASeqs(str(ID), msa)
+	numSubTrees, treeHierarchy, listLongID = getDNASeqs(str(ID), msa)
 	alignDNASeqs(str(ID), msa, numSubTrees)
 	makeSubTrees(str(ID), numSubTrees)
-	#mergeTree(str(ID), numSubTrees)
+	mergeTree(str(ID), tree, treeHierarchy, listLongID)
 
 
 if __name__ == '__main__':
