@@ -11,7 +11,6 @@ class GenTree:
         pass
 
     def makeTree( self, MSA , name):
-    	print 'got into MakeTree'
     	flag = 0
     	if flag == 1:
     		os.system("FastTree -gtr -nt " + MSA + " > " + name)
