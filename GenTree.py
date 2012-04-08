@@ -1,6 +1,6 @@
 #!/opt/python/bin/python2.7
 
-import subprocess
+import subprocess, os
 
 class GenTree:
 
@@ -11,7 +11,12 @@ class GenTree:
         pass
 
     def makeTree( self, MSA , name):
-    	subprocess.call(["./FastTree -gtr -nt " + MSA + " > " + name], shell=True)
+    	print 'got into MakeTree'
+    	flag = 0
+    	if flag == 1:
+    		os.system("FastTree -gtr -nt " + MSA + " > " + name)
+    	else: 
+    		subprocess.call(["FastTree -gtr -nt " + MSA + " > " + name], shell=True)
 
 if __name__ == '__main__':
 	sys.exit(1)
