@@ -51,10 +51,12 @@ class GenTree:
 		    		myLongID2 = listLongIDs[iterSubTree+1][treeHierarchy[iterSubTree]-1]
 		    		myLongID2 = myLongID2.replace('|', '\|')
 		    		myRegEx2 = r'(' + myLongID2 + r')'
-		    		while re.search(myRegEx2, newickSubString) == None:
-		    			while findSubtreeString(newickSubString) > 0:
-			    			subTreeEnd += 1
-				    		newickSubString = newickString[subTreeStart:subTreeEnd]
+		    		#print myRegEx1 + ', ' + myRegEx2
+		    		while (re.search(myRegEx2, newickSubString) == None) or (findSubtreeString(newickSubString) > 0):
+			    		subTreeEnd += 1
+			    		#print str(iterSubTree+1) + ', ' + str(subTreeEnd)
+			    		#print newickSubString
+				    	newickSubString = newickString[subTreeStart:subTreeEnd]
 				    #Once subtree is found, replace it with the subtree number placed in brackets
 		    		newickString = newickString.replace(newickSubString, '<' + str(iterSubTree+1) + '>')
     		iterSubTree += 1
