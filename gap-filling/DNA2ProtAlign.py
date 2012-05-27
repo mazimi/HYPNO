@@ -127,7 +127,26 @@ class DNA2ProtAlign:
 							if gapHandlingDNA == 1:		#Transfer DNA gap to protein
 								currSeq += '---'
 							if gapHandlingDNA == 2:
-								fullTree = Phylo.read('bpg0233328.ml', 'newick')
+								fullTree = Phylo.read(fileAllTree, 'newick')
+								#DEBUG: Draw an ASCII tree, just for Nima
+								print Phylo.draw_ascii(fullTree)
+								minDistance = 99999					#Set very high value
+								nearestNeighbor = -1				#Start at -1 in case no neighbor found
+								#Loop over all proteins in clade looking for nearest neighbor with matching AA at the
+								#same position and transfer codon if available.
+								for k in xrange(0, len(seqProt)):
+									if (idProt[i] != idProt[k]) and (seqProt[k][j] == seqProt[i][j] ):	#TODO: Currently only checking for AA w/ same case
+										distNodes = fullTree.distance(idProt[i], idProt[k])
+										#DEBUG: Print distance values
+										print "Distance between " + str(idProt[i]) + " and " + str(idProt[k])
+										print distNodes
+										if distNodes < minDistance:		#Select current leaf it's the closer to target than last nearest
+											minDistance = distNodes
+											nearestNeighbor = k
+								if nearestNeighbor > -1:		#A nearest neighbor with matching AA was found!
+									#DEBUG: List nearest neighbor with matching AA
+									print "Nearest neighbor is: " + str(idProt[nearestNeighbor])
+									currSeq += seqDNA[nearestNeighbor][indexDNA*3:indexDNA*3+3]
 						else:
 							if checkCodons:
 								upperSeqProtein = seqProt[i][j].upper()
