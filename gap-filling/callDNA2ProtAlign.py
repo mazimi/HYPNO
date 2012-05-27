@@ -10,7 +10,6 @@ def main():
 	fileProt = "bpg0233328sf3.a2m"
 	fileDNA = "DNAseqs3.fasta"
 	fileOutput = "DNAaligned3.fasta"
-	fileAllMSA = "bpg0233328.a2m"
 	fileAllTree = "bpg0233328.ml"
 	myDNA = DNA2ProtAlign()
 	myDNA.alignDNAseqs(fileProt, fileDNA, fileOutput, fileAllTree)
