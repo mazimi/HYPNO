@@ -1,7 +1,10 @@
 #!/opt/python/bin/python2.7
 
+#AUTHORS: mazimi, nemami. 2012-6-10
+#LICENSE: https://github.com/mazimi/HYPNO/blob/master/LICENSE
 #DESCRIPTION: Parser for OrthoDB flatfile to extract Orthology Group (OG)
 # for each UniProt Accession (UniProt_ACC) in tab delimited format.
+#LATEST VERSION: https://github.com/mazimi/HYPNO/blob/master/OrthoGroups/OrthoParse.py
 
 import argparse
 import re
