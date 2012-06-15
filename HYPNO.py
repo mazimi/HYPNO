@@ -91,14 +91,16 @@ def getDNASeqs(ID, msa):
 #retreived DNA sequence and inserts DNA into
 #original protein alignment
 #TODO: Determine if DNA should be re-aligned
-def alignDNASeqs(ID, msa, numSubTrees):
+def alignDNASeqs(ID, msa, tree, numSubTrees):
 	for i in xrange(1, numSubTrees+1):
 		fileProt = ID + '/' + msa.split('.')[0] + 'sf' + str(i) + '.a2m'
 		fileDNA = ID + '/DNAseqs' + str(i) + '.fasta'
 		fileOutput = ID + '/' + 'subtree' + str(i) + '.a2m'
+		fileAllMSA = ID + '/' + msa
+		fileAllTree = ID + '/' + tree
 
 		myDNA = DNA2ProtAlign()
-		myDNA.alignDNAseqs(fileProt, fileDNA, fileOutput)
+		myDNA.alignDNAseqs(fileProt, fileDNA, fileOutput, fileAllMSA, fileAllTree)
 
 #For all subtrees, takes DNA alignment and
 #generates new subtree using GTR algorithm
@@ -136,13 +138,13 @@ def main():
 	args = parser.parse_args()
 	msa = str(args.msa_file)
 	tree = str(args.tree_file)
-	threshold = 95.0
+	threshold = 93.0
 
 	ID = time()									#Used to create directory to store files
 	initialize(str(ID), msa, tree)				#Create dir and move input files
 	makeSubtrees(str(ID), msa, tree, threshold)	#Run Kerf
 	numSubTrees, treeHierarchy, listLongID = getDNASeqs(str(ID), msa)
-	alignDNASeqs(str(ID), msa, numSubTrees)
+	alignDNASeqs(str(ID), msa, tree, numSubTrees)
 	makeSubTrees(str(ID), numSubTrees)
 	mergeTree(str(ID), tree, treeHierarchy, listLongID)
 
