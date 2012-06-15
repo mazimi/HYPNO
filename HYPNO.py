@@ -96,11 +96,10 @@ def alignDNASeqs(ID, msa, tree, numSubTrees):
 		fileProt = ID + '/' + msa.split('.')[0] + 'sf' + str(i) + '.a2m'
 		fileDNA = ID + '/DNAseqs' + str(i) + '.fasta'
 		fileOutput = ID + '/' + 'subtree' + str(i) + '.a2m'
-		fileAllMSA = ID + '/' + msa
 		fileAllTree = ID + '/' + tree
 
 		myDNA = DNA2ProtAlign()
-		myDNA.alignDNAseqs(fileProt, fileDNA, fileOutput, fileAllMSA, fileAllTree)
+		myDNA.alignDNAseqs(fileProt, fileDNA, fileOutput, fileAllTree)
 
 #For all subtrees, takes DNA alignment and
 #generates new subtree using GTR algorithm
