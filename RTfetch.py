@@ -5,9 +5,10 @@ from Bio import Entrez, SeqIO, AlignIO
 from xml.etree.ElementTree import ElementTree
 from Bio.Blast import NCBIWWW
 from Bio.Seq import Seq
-import urllib,urllib2, sys, re, xml, os
+import urllib,urllib2, sys, re, xml, subprocess
+from Bio.Emboss.Applications import NeedleCommandline
 
-# Installation Requirements: ElementTree module, EMBOSS package, and BioPython for functionality
+# Installation Requirements: ElementTree module and BioPython for functionality
 
 class RTfetch:
 
@@ -120,41 +121,39 @@ class RTfetch:
 		# pID: pairwise alignment subroutine (Adapted and modified from below source)
 		# input: 2 nucleotide sequences (0,1)
 		# output: integer value between 0 and 100 (0), aligned translated protein sequence (1)
-		# NOTE: Uses EMBOSS package needle executable call
-		# NOTE: Creates, prints to, and reads from local file tempAlign.needle
-		def getpID(target,template):											
-			seqA = open('tempA.fasta', 'w')			# Print sequences to temporary files for EMBOSS needle call
-			seqB = open('tempB.fasta', 'w')				
-			print >>seqA, '> seqA\n'+target+'\n'
-			print >>seqB, '> seqB\n'+template+'\n'
-			seqA.close()							# Close temporary file handle references
-			seqB.close()
-			os.system('needle -asequence tempA.fasta -sprotein1 -bsequence tempB.fasta -sprotein2 -gapopen 10 -gapextend 0.5 -outfile tempAlign.needle -auto')
-			needle = open('tempAlign.needle','rU')
-			alignment = AlignIO.read(needle,"emboss")# AlignIO BioPython Module reads out EMBOSS globally aligned sequences
-			i=0 									 # Global alignment --> only 1 counter necessary for both sequences
-			counter = 0 							 # Global counter
-			gaps = 0
-			sequence0 = alignment[0]
-			sequence1 = alignment[1]
-			seq0 = str(sequence0.seq)
-			seq1 = str(sequence1.seq)
-			list0 = list(seq0)
-			list1 = list(seq1)
-			while counter < len(list0):
-				topAA = list0[counter]
-				bottomAA = list1[counter]
-				# Considers gaps and mismatches in both sequences for computing percent identity
-				if topAA != bottomAA:
-					gaps = gaps + 1
-					pass
-				else:
-					i = i + 1
-				counter = counter + 1
-			percent = 100*i/len(seq0)
-			os.remove('tempA.fasta')	# Remove these temporary files that you no longer need
-			os.remove('tempB.fasta')
-			return (str(percent),seq0.upper(),seq1.upper(), gaps)
+		def getpID(target,template):
+			cline = NeedleCommandline(asequence="asis:"+target,
+										bsequence="asis:"+template,
+										gapopen=10,
+										gapextend=0.5,
+										auto=True, filter=True)
+			try:
+				child = subprocess.Popen(str(cline),stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr=subprocess.PIPE)
+				child.stdin.close()
+				alignment = AlignIO.read(child.stdout, "emboss") # AlignIO BioPython Module reads out EMBOSS globally aligned sequences
+				i=0 									 # Global alignment --> only 1 counter necessary for both sequences
+				counter = 0 							 # Global counter
+				gaps = 0
+				sequence0 = alignment[0]
+				sequence1 = alignment[1]
+				seq0 = str(sequence0.seq)
+				seq1 = str(sequence1.seq)
+				list0 = list(seq0)
+				list1 = list(seq1)
+				while counter < len(list0):
+					topAA = list0[counter]
+					bottomAA = list1[counter]
+					# Considers gaps and mismatches in both sequences for computing percent identity
+					if topAA != bottomAA:
+						gaps = gaps + 1
+						pass
+					else:
+						i = i + 1
+					counter = counter + 1
+				percent = 100*i/len(seq0)
+				return (str(percent),seq0.upper(),seq1.upper(), gaps)
+			except:
+				return (0,'','',0)
 
 		# orfLength: determines length of ORFs based on protein sequence length via uniprot query
 		# input: uniprot ID (0)
