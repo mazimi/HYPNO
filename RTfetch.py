@@ -7,6 +7,7 @@ from Bio.Blast import NCBIWWW
 from Bio.Seq import Seq
 import urllib,urllib2, sys, re, xml, subprocess
 from Bio.Emboss.Applications import NeedleCommandline
+from HTMLParser import HTMLParser
 
 # Installation Requirements: ElementTree module and BioPython for functionality
 
@@ -33,6 +34,7 @@ class RTfetch:
 			# (7) ORF starting index (default = 'null')
 			# (8) ORF ending index (default = 'null')
 			# (9) Mapped DNA sequence (default = 'null')
+			# (10) Error Message (default = 'null')
 	def getSeqID(self, uniprotID):
 
 		# orfFinder: 6 frame ORF search on nucleotide sequence (adapted & modified from BioPython Cookbook, like below)
@@ -343,6 +345,25 @@ class RTfetch:
 			except:			
 				return 'null'
 
+		def checkObsolete(inputID):
+			page = urllib.urlopen('http://www.uniprot.org/uniprot/'+inputID)
+			# f = urllib.urlopen('http://www.uniprot.org/uniprot/C4PZT2')
+			read = page.read()
+			page.close()
+			parser = HTMLUniparse()
+			parser.setID(inputID)
+			parser.feed(read)
+			if parser.obsolete:
+				error = 'Obsolete: UniProt Entry '+inputID+"\n"
+				if parser.deleted:
+					error = error + "Cause: Entry deleted\n"
+				elif parser.demerged:
+					error = error + 'Cause: Entry demerged into following UniProt IDs: '+str(parser.parsedIDs)+"\n"
+				else:
+					error = error + "Cause: Entry merger\n"
+				return (True, error)
+			return (False, 'null')
+
 		# getGeneticCode: for deducing organismically specific nucleotide translation table based on UniProt taxonomic lineage of query
 		# input: uniprot ID
 		# output: integer for genetic code 
@@ -402,6 +423,12 @@ class RTfetch:
 		source = 'null'
 		mappedDNA = 'null'
 		proSeq = 'null'
+		errorMessage = 'null'
+		(isObsolete, error) checkObsolete(uniprotID)
+		if isObsolete:
+			errorMessage = error
+			outputTuple = (uniprotID, nucID, source, proSeq, nucSequence, aligned, pID, startORF, endORF, mappedDNA, errorMessage)
+			return outputTuple
 		table = getGeneticCode(uniprotID) 				# Translation Table for Biopython, default = 1 (standard genetic code)
 		doEMBL = True
 		quadTuple = tryNCBI(uniprotID)
@@ -418,7 +445,7 @@ class RTfetch:
 			dna_seq = Seq(nucSequence)
 			source = quadTuple[3]
 			(startORF, endORF, aligned, pID, mappedDNA) = orfFinder(dna_seq, table, min_pro_len, proSeq)
-			outputTuple = (uniprotID, nucID, source, proSeq, nucSequence, aligned, pID, startORF, endORF, mappedDNA)
+			outputTuple = (uniprotID, nucID, source, proSeq, nucSequence, aligned, pID, startORF, endORF, mappedDNA, errorMessage)
 			return outputTuple
 		else: 
 			taxon = getTaxon(uniprotID)
@@ -434,8 +461,40 @@ class RTfetch:
 					source = quadTuple[3]
 					aligned = quadTuple[4]						# Get aligned from BLAST rather than AlignIO
 					(startORF, endORF, dummy, pID, mappedDNA) = orfFinder(dna_seq, table, min_pro_len, proSeq)
-			outputTuple = (uniprotID, nucID, source, proSeq, nucSequence, aligned, pID, startORF, endORF, mappedDNA)
+			outputTuple = (uniprotID, nucID, source, proSeq, nucSequence, aligned, pID, startORF, endORF, mappedDNA, errorMessage)
 			return outputTuple
+
+# create a subclass and override the handler methods
+class HTMLUniparse(HTMLParser):
+	def setID(self, inputID):
+		self.myID = inputID
+		self.obsolete = 0
+		self.deleted = 0
+		self.demerged = 0
+		self.parsedIDs = []
+	def handle_data(self, data):
+		if self.demerged:
+			matchID = re.search(r'([A-N,R-Z][0-9][A-Z][A-Z,0-9][A-Z,0-9][0-9]|[O-Q][0-9][A-Z,0-9][A-Z,0-9][A-Z,0-9][0-9])', data.upper())
+			if matchID:
+				parsedID = matchID.group(0)
+				if parsedID.upper() != self.myID:
+					self.parsedIDs.append(parsedID)
+			return 0
+		elif self.obsolete:
+			deleted = re.search('deleted',data.lower())
+			demerged = re.search('demerged',data.lower())
+			if deleted:
+				self.deleted = 1
+			elif demerged:
+				self.demerged = 1
+			return 0
+		else:	
+			match = re.search('obsolete',data.lower())
+			if match:
+				self.obsolete = 1
+			return 0
+	def returnIDs():
+		return parsedIDs
 
 if __name__ == '__main__':
 	sys.exit(1)
