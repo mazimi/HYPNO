@@ -2,6 +2,7 @@
 
 from time import time
 import os
+import sys
 import shutil
 import argparse
 from Bio import AlignIO, Phylo, SeqIO
@@ -76,6 +77,9 @@ def getDNASeqs(ID, msa):
 		j = 0
 		for uniprotID in listAccessionIDs[i]:
 			nucFetchTuple = nucFetch.getSeqID(uniprotID)
+			if nucFetchTuple[10] != 'null':
+				print nucFetchTuple[10]
+				sys.exit(1)
 			DNASeqs2Write.append(SeqRecord(Seq(nucFetchTuple[9]), id=listLongID[i][j], description="HYPNO FASTA Output"))
 			#print '\t' + uniprotID + ' - ' + nucFetchTuple[9] + '\n' #DEBUG: print uniprot ID and sequence
 			j += 1
