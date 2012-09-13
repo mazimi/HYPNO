@@ -135,13 +135,14 @@ def mergeTree(ID, tree, treeHierarchy, listLongID):
 
 def main():
 	#Parse arguments specifying MSA and TREE files
-	parser = argparse.ArgumentParser(description='Method for HYbrid Protein NucleOtide phylogenetic tree construction')
-	parser.add_argument('--msa-file', required=True)
-	parser.add_argument('--tree-file', required=True)
+	parser = argparse.ArgumentParser(description='Method for HYbrid Protein NucleOtide phylogenetic gene tree reconstruction')
+	parser.add_argument('--msa-file', type = str, help='Name of input multiple sequence alignment file (requires aligned FASTA or a2m format)', required=True)
+	parser.add_argument('--tree-file', type = str, help='Name of input tree file (requires newick format)', required=True)
+	parser.add_argument('--k', default = 90.0, type = int, help='Minimum "KERF" subtree percent identity threshold for recalculating nucleotide topology (default: 90.0)', required=False)
 	args = parser.parse_args()
-	msa = str(args.msa_file)
-	tree = str(args.tree_file)
-	threshold = 93.0
+	msa = args.msa_file
+	tree = args.tree_file
+	threshold = args.k
 
 	ID = time()									#Used to create directory to store files
 	initialize(str(ID), msa, tree)				#Create dir and move input files
