@@ -1,11 +1,6 @@
 #!/opt/python/bin/python2.7
 
-<<<<<<< HEAD
-import subprocess, os
-=======
-import subprocess
-import re
->>>>>>> upstream/master
+import os, re
 
 class GenTree:
 
@@ -17,11 +12,7 @@ class GenTree:
 
     #Generates tree using FastTree
     def makeTree( self, MSA , name):
-    	flag = 1
-    	if flag == 1:
-    		os.system("FastTree -gtr -nt " + MSA + " > " + name)
-    	else: 
-    		subprocess.call(["FastTree -gtr -nt " + MSA + " > " + name], shell=True)
+    	os.system("FastTree -gtr -nt " + MSA + " > " + name)
 
     #Takes in a tree and prunes the larger tree where there exist
     #identified subtrees with 3 or more leafs (based on Kerf CSV).
