@@ -13,14 +13,14 @@ class GenTree:
 
     #Generates tree using FastTree
     def makeTree( self, MSA , name):
-        os.system("FastTree -gtr -nt -quiet " + MSA + " > " + name)
-        ''' TODO: figure out a way to capture stdout to debug info '''
-        # cmd = "FastTree -gtr -nt -quiet " + MSA + " > " + name
-        # with open(os.devnull, 'w') as fnull:
-        #     proc = Popen(cmd, stdout=fnull, stderr=fnull)
-        # with open('HYPNO.debug','a') as debugFh:
-        #     debugFh.write(proc.stdout.read()+'\n')
-
+        # os.system("FastTree -gtr -nt -quiet " + MSA + " > " + name)
+        cmd = "FastTree -gtr -nt " + MSA + " > " + name
+        pro = Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        with open('HYPNO.debug','a') as debugFh:
+            for line in pro.communicate():
+                debugFh.write(line)
+            debugFh.write('\n')
+        return 0
 
     #Takes in a tree and prunes the larger tree where there exist
     #identified subtrees with 3 or more leafs (based on Kerf CSV).
