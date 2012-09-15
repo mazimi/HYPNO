@@ -383,7 +383,6 @@ class RTfetch:
 			dna_seq = Seq(nucSequence)
 			(startORF, endORF, aligned, pID, mappedDNA) = orfFinder(dna_seq, table, min_pro_len, proSeq)
 			outputTuple = (uniprotID, nucID, source, proSeq, nucSequence, aligned, pID, startORF, endORF, mappedDNA, errorMessage)
-			return outputTuple
 		else: 
 			taxon = getTaxon(uniprotID)
 			if taxon != 'null':
@@ -395,7 +394,7 @@ class RTfetch:
 					dna_seq = Seq(nucSequence)
 					(startORF, endORF, dummy, pID, mappedDNA) = orfFinder(dna_seq, table, min_pro_len, proSeq)
 			outputTuple = (uniprotID, nucID, source, proSeq, nucSequence, aligned, pID, startORF, endORF, mappedDNA, errorMessage)
-			return outputTuple
+		return outputTuple
 
 # create a subclass and override the handler methods
 class HTMLUniparse(HTMLParser):
