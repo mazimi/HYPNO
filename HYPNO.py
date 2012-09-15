@@ -15,7 +15,6 @@ from RTfetch import RTfetch
 from DNA2ProtAlign import DNA2ProtAlign
 from GenTree import GenTree
 
-
 #Creates a temporary directory to store data files
 def initialize(ID, msa, tree):
 	os.mkdir(ID)
@@ -37,7 +36,7 @@ def makeSubtrees(ID, msa, tree, threshold):
 
 #Retreives DNA sequences for each subtree
 #from Kerf generated csv MSA map file
-def getDNASeqs(ID, msa):
+def getDNASeqs(ID, msa, pred, execMin):
 	numSubTrees = 0
 	listAccessionIDs = [[]]
 	listLongID = [[]]
@@ -50,7 +49,7 @@ def getDNASeqs(ID, msa):
 		#Restricted to Uniprot ID format listed at: http://www.uniprot.org/manual/accession_numbers
 		i = 0
 		for line in msaMap:
-			match = re.search(r'^(\d+)\,.*\|([A-N,R-Z][0-9][A-Z][A-Z,0-9][A-Z,0-9][0-9]|[O-Q][0-9][A-Z,0-9][A-Z,0-9][A-Z,0-9][0-9])\|', line)
+			match = re.search(r'^(\d+).*([A-N,R-Z][0-9][A-Z][A-Z,0-9][A-Z,0-9][0-9]|[O-Q][0-9][A-Z,0-9][A-Z,0-9][A-Z,0-9][0-9])', line)
 			if match:
 				if numSubTrees != int(match.group(1)):
 					numSubTrees = int(match.group(1))
@@ -64,10 +63,15 @@ def getDNASeqs(ID, msa):
 				longMatch = re.search(r'^(\d+)\,\s(.*)\n', line)
 				listLongID[numSubTrees].append(longMatch.group(2))
 				treeHierarchy[i-1] += 1
+			else:
+				print '** HYPNO input error: given MSA headers must contain valid UniProt accessions.', \
+					  '\tAccession missing for given line: '+line
 		#TODO
 		#Pass list of accession IDs to DNA sequence lookup script (uniprot.py)
 		#Create FASTA files with DNA sequence for each clade (uniprot.py)
 
+	# number of missed / totalTried nucleotide retrievals must be >= execMin
+	missed, totalTried, missedList = float(0), float(0), []
 	#Retreive DNA sequences using Uniprot IDs (RTFetch)
 	for i in xrange(1, numSubTrees+1):
 		DNASeqs2Write = []
@@ -76,14 +80,28 @@ def getDNASeqs(ID, msa):
 		
 		j = 0
 		for uniprotID in listAccessionIDs[i]:
+			totalTried += 1
 			nucFetchTuple = nucFetch.getSeqID(uniprotID)
-			if nucFetchTuple[10] != 'null':
-				print nucFetchTuple[10]
-				sys.exit(1)
+			if nucFetchTuple[4] == 'null':
+				missed += 1; missedList.append(uniprotID)
+				if nucFetchTuple[10] != 'null':
+					print '\t**HYPNO obsolete UniProt entry warning: ', nucFetchTuple[10]
+				continue
+			elif nucFetchTuple[6] < pred:
+				missed += 1; missedList.append(uniprotID)
+				continue				
 			DNASeqs2Write.append(SeqRecord(Seq(nucFetchTuple[9]), id=listLongID[i][j], description="HYPNO FASTA Output"))
 			#print '\t' + uniprotID + ' - ' + nucFetchTuple[9] + '\n' #DEBUG: print uniprot ID and sequence
 			j += 1
 
+		percentPassed = 100 * (1 - missed / totalTried)
+		if not percentPassed >= execMin:
+			print "\n** HYPNO execution error: Nucleotide sequences were retrieved for only "+str(percentPassed)+ \
+					" percent of attempted sequences, below the "+str(execMin)+" threshold. One solution may"+ \
+					" be to lower the --n or --s threshold values. Alternatively, a solution may be to provide"+ \
+					" a different input tree and MSA.\nAccesions for which nucleotide sequences could not be"+ \
+					" retrieved were the following: "+str(missedList)+"\n"
+			sys.exit(1)
 		#Write DNA sequences for each subtree to file
 		output_handle = open(ID + '/DNAseqs' + str(i) + '.fasta', 'w')
 		SeqIO.write(DNASeqs2Write, output_handle, "fasta")
@@ -112,7 +130,8 @@ def makeSubTrees(ID, numSubTrees):
 	for i in xrange(1,numSubTrees+1):
 		MSA = ID + '/' + 'subtree' + str(i) + '.a2m'
 		outputName = ID + '/' + 'subtree' + str(i) + '.ml'
-
+		with open('HYPNO.debug','w') as debugFh:
+			debugFh.write('HYPNO debug info:\n\n')
 		myTree = GenTree()
 		myTree.makeTree(MSA , outputName)
 
@@ -132,25 +151,57 @@ def mergeTree(ID, tree, treeHierarchy, listLongID):
 	output_handle.write(mergedTree)
 	output_handle.close()
 
+# Checks for proper input formatting
+def validateInputs(msa, tree):
+	# Check for existence and proper FASTA formatting of input MSA
+	try:
+		msaHandle = open(msa, "rU")
+	except:
+		print '** HYPNO input error: Given MSA file location does not exist or is not accessible: '+msa
+		sys.exit(1)
+	try:
+		SeqIO.parse(msaHandle, "fasta").next()
+	except:
+		print '** HYPNO input error: improper MSA file format, must be aligned FASTA or a2m: '+msa
+		sys.exit(1)	
+	try:
+		treeHandle = open(tree, "rU")
+	except:
+		print '** HYPNO input error: Given tree file location does not exist or is not accessible: '+tree
+		sys.exit(1)
+	try:
+		Phylo.read(treeHandle, "newick")
+	except:
+		print '** HYPNO input error: improper tree file format, must be Newick format: '+msa
+		sys.exit(1)
+	return 0
 
 def main():
 	#Parse arguments specifying MSA and TREE files
 	parser = argparse.ArgumentParser(description='Method for HYbrid Protein NucleOtide phylogenetic gene tree reconstruction')
 	parser.add_argument('--msa-file', type = str, help='Name of input multiple sequence alignment file (requires aligned FASTA or a2m format)', required=True)
 	parser.add_argument('--tree-file', type = str, help='Name of input tree file (requires newick format)', required=True)
-	parser.add_argument('--k', default = 90.0, type = int, help='Minimum "KERF" subtree percent identity threshold for recalculating nucleotide topology (default: 90.0)', required=False)
+	parser.add_argument('--k', default = 90.0, type = float, help='Minimum subtree pairwise percent identity among leaf sequences for subtree topology to be re-estimated using retrieved nucleotide sequences (default: 90.0)', required=False)
+	parser.add_argument('--n', default = 95.0, type = float, help='Minimum "predicted protein" percent identity to the expected sequence for a retrieved nucleotide sequence to be accepted (default: 95.0)', required=False)
+	parser.add_argument('--s', default = 100.0, type = float, help='Minimum percent of correct retrieved nucleotide sequences (e.g. those passing --n threshold) for program execution to continue (default: 100.0)', required=False)
 	args = parser.parse_args()
-	msa = args.msa_file
-	tree = args.tree_file
-	threshold = args.k
+	msa, tree, kerf, pred, execMin = args.msa_file, args.tree_file, args.k, args.n, args.s 
 
 	ID = time()									#Used to create directory to store files
+	print 'Step 0 of 5: Input validation'
+	validateInputs(msa,tree)
 	initialize(str(ID), msa, tree)				#Create dir and move input files
-	makeSubtrees(str(ID), msa, tree, threshold)	#Run Kerf
-	numSubTrees, treeHierarchy, listLongID = getDNASeqs(str(ID), msa)
+	print 'Step 1 of 5: Generating subtrees'
+	makeSubtrees(str(ID), msa, tree, kerf)		#Run Kerf
+	print 'Step 2 of 5: Retrieving DNA sequences'
+	numSubTrees, treeHierarchy, listLongID = getDNASeqs(str(ID), msa, pred, execMin)
+	print 'Step 3 of 5: Mapping DNA sequences to given protein MSA'
 	alignDNASeqs(str(ID), msa, tree, numSubTrees)
+	print 'Step 4 of 5: Re-estimating subtree topologies'
 	makeSubTrees(str(ID), numSubTrees)
+	print 'Step 5 of 5: Reinserting subtrees into gene tree topology'
 	mergeTree(str(ID), tree, treeHierarchy, listLongID)
+	print 'HYPNO execution completed.'
 
 
 if __name__ == '__main__':
