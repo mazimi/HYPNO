@@ -1,6 +1,7 @@
 #!/opt/python/bin/python2.7
 
-import os, re
+import os, re, subprocess
+from subprocess import Popen
 
 class GenTree:
 
@@ -12,7 +13,14 @@ class GenTree:
 
     #Generates tree using FastTree
     def makeTree( self, MSA , name):
-    	os.system("FastTree -gtr -nt " + MSA + " > " + name)
+        os.system("FastTree -gtr -nt -quiet " + MSA + " > " + name)
+        ''' TODO: figure out a way to capture stdout to debug info '''
+        # cmd = "FastTree -gtr -nt -quiet " + MSA + " > " + name
+        # with open(os.devnull, 'w') as fnull:
+        #     proc = Popen(cmd, stdout=fnull, stderr=fnull)
+        # with open('HYPNO.debug','a') as debugFh:
+        #     debugFh.write(proc.stdout.read()+'\n')
+
 
     #Takes in a tree and prunes the larger tree where there exist
     #identified subtrees with 3 or more leafs (based on Kerf CSV).
