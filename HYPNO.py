@@ -1,16 +1,11 @@
 #!/opt/python/bin/python2.7
 
+import os, sys, shutil, argparse, re
 from time import time
-import os
-import sys
-import shutil
-import argparse
 from Bio import AlignIO, Phylo, SeqIO
-from Bio.Align import MultipleSeqAlignment
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from kerf import Kerf
-import re
 from RTfetch import RTfetch
 from DNA2ProtAlign import DNA2ProtAlign
 from GenTree import GenTree
