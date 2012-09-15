@@ -1,6 +1,6 @@
 #!/opt/python/bin/python2.7
 
-import os, re, subprocess
+import re, subprocess
 from subprocess import Popen
 
 class GenTree:
@@ -13,7 +13,6 @@ class GenTree:
 
     #Generates tree using FastTree
     def makeTree( self, MSA , name):
-        # os.system("FastTree -gtr -nt -quiet " + MSA + " > " + name)
         cmd = "FastTree -gtr -nt " + MSA + " > " + name
         pro = Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         with open('HYPNO.debug','a') as debugFh:
