@@ -162,7 +162,7 @@ def validateInputs(msa, tree):
 	try:
 		SeqIO.parse(msaHandle, "fasta").next()
 	except:
-		print '** HYPNO input error: improper MSA file format, must be aligned FASTA or a2m: '+msa
+		print '** HYPNO input error: improper MSA file format, must be aligned FASTA or a2m format: '+msa
 		sys.exit(1)	
 	try:
 		treeHandle = open(tree, "rU")
