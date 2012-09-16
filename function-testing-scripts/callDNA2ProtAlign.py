@@ -7,9 +7,9 @@ import sys
 # input: none
 # output: none
 def main():
-	fileProt = "protAlign.a2m"
-	fileDNA = "DNAseqs.fasta"
-	fileOutput = "DNAaligned.fasta"
+	fileProt = "1333735262.28 copy/bpg0240116sf4.a2m"
+	fileDNA = "1333735262.28 copy/DNAseqs4.fasta"
+	fileOutput = "1333735262.28 copy/DNAaligned4.fasta"
 	myDNA = DNA2ProtAlign()
 	myDNA.alignDNAseqs(fileProt, fileDNA, fileOutput)
 

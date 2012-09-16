@@ -14,7 +14,6 @@ class Kerf:
     def __init__( self ):
         pass
 
-
     def kerfRun( self, tree2kerf, MSA2kerf, kerfThresh, outputDir ):
 
         global thresh  # some variable declarations
