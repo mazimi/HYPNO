@@ -89,11 +89,11 @@ def getDNASeqs(ID, msa, pred, execMin):
 						debugFh.write(nucFetchTuple[11])			
 					continue
 				debugFh.write(nucFetchTuple[11])
-				if nucFetchTuple[6] < pred:
+				if float(nucFetchTuple[6]) < pred:
 					missed += 1; missedList.append(uniprotID)
 					debugFh.write('\tPredicted protein sequence for retrieved nucleotide sequence does not match '+ \
 									'user provided threshold '+str(pred)+' for percent identity to expected protein '+ \
-									'sequence. Continuing execution.\n')
+									'sequence (only '+str(nucFetchTuple[6])+'). Continuing execution.\n')
 					continue
 				DNASeqs2Write.append(SeqRecord(Seq(nucFetchTuple[9]), id=listLongID[i][j], description="HYPNO FASTA Output"))
 				#print '\t' + uniprotID + ' - ' + nucFetchTuple[9] + '\n' #DEBUG: print uniprot ID and sequence
