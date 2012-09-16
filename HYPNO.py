@@ -25,6 +25,8 @@ def makeSubtrees(ID, msa, tree, threshold):
 	outputDir = str(ID)
 	kerfTree = Kerf()
 	kerfTree.kerfRun( fileTree, fileMSA, threshold, outputDir)
+	with open(ID+'/HYPNO.debug','w') as debugFh:
+		debugFh.write('HYPNO debug info:\n\n')
 	#OLD: subprocess.call(["python kerf.py --msa-file " + ID + '/' + msa + " --tree-file " + ID + '/' + tree + " --output-directory " + ID + " --threshold " + str(threshold)], shell=True)
 	#TODO
 	#Should do some error handling
@@ -75,32 +77,45 @@ def getDNASeqs(ID, msa, pred, execMin):
 		
 		j = 0
 		for uniprotID in listAccessionIDs[i]:
-			totalTried += 1
-			nucFetchTuple = nucFetch.getSeqID(uniprotID)
-			if nucFetchTuple[4] == 'null':
-				missed += 1; missedList.append(uniprotID)
-				if nucFetchTuple[10] != 'null':
-					print '\t**HYPNO obsolete UniProt entry warning: ', nucFetchTuple[10]
-				continue
-			elif nucFetchTuple[6] < pred:
-				missed += 1; missedList.append(uniprotID)
-				continue				
-			DNASeqs2Write.append(SeqRecord(Seq(nucFetchTuple[9]), id=listLongID[i][j], description="HYPNO FASTA Output"))
-			#print '\t' + uniprotID + ' - ' + nucFetchTuple[9] + '\n' #DEBUG: print uniprot ID and sequence
-			j += 1
+			with open(ID+'/HYPNO.debug','a') as debugFh:
+				totalTried += 1
+				nucFetchTuple = nucFetch.getSeqID(uniprotID)
+				if nucFetchTuple[4] == 'null':
+					missed += 1; missedList.append(uniprotID)
+					if nucFetchTuple[10] != 'null':
+						print '\t**HYPNO obsolete UniProt entry warning: ', nucFetchTuple[10]
+						debugFh.write('\t**HYPNO obsolete UniProt entry warning: '+nucFetchTuple[10])
+					else:
+						debugFh.write(nucFetchTuple[11])			
+					continue
+				debugFh.write(nucFetchTuple[11])
+				if nucFetchTuple[6] < pred:
+					missed += 1; missedList.append(uniprotID)
+					debugFh.write('\tPredicted protein sequence for retrieved nucleotide sequence does not match '+ \
+									'user provided threshold '+str(pred)+' for percent identity to expected protein '+ \
+									'sequence. Continuing execution.\n')
+					continue
+				DNASeqs2Write.append(SeqRecord(Seq(nucFetchTuple[9]), id=listLongID[i][j], description="HYPNO FASTA Output"))
+				#print '\t' + uniprotID + ' - ' + nucFetchTuple[9] + '\n' #DEBUG: print uniprot ID and sequence
+				j += 1
 
-		percentPassed = 100 * (1 - missed / totalTried)
-		if not percentPassed >= execMin:
-			print "\n** HYPNO execution error: Nucleotide sequences were retrieved for only "+str(percentPassed)+ \
-					" percent of attempted sequences, below the "+str(execMin)+" threshold. One solution may"+ \
-					" be to lower the --n or --s threshold values. Alternatively, a solution may be to provide"+ \
-					" a different input tree and MSA.\nAccesions for which nucleotide sequences could not be"+ \
-					" retrieved were the following: "+str(missedList)+"\n"
-			sys.exit(1)
 		#Write DNA sequences for each subtree to file
 		output_handle = open(ID + '/DNAseqs' + str(i) + '.fasta', 'w')
 		SeqIO.write(DNASeqs2Write, output_handle, "fasta")
 		output_handle.close()
+
+	percentPassed = 100 * (1 - missed / totalTried)
+	if not percentPassed >= execMin:
+		print "\n** HYPNO execution error: Nucleotide sequences were retrieved for only "+str(percentPassed)+ \
+				" percent of attempted sequences, with the remaining attempts yielding DNA sequences below the "+ \
+				str(execMin)+" --n threshold.\nPossible debugging solutions are as follows:\n"+ \
+				"\t(a) Lower the --n or --s threshold values to allow more permissive HYPNO execution.\n"+ \
+				"\t(b) Rerun the program with a different input tree and MSA, as it may be the case that "+ \
+				"no reliable nucleotide sequence exists for a given UniProt accession.\n"+ \
+				"Accessions for which nucleotide sequences could not be retrieved were the following: "+str(missedList)+"\n"+ \
+				"Please refer to the debug file HYPNO.debug for more information on the queries that were attempted "+ \
+				"for each accession."
+		sys.exit(1)
 
 	return numSubTrees, treeHierarchy, listLongID
 
@@ -125,8 +140,6 @@ def makeSubTrees(ID, numSubTrees):
 	for i in xrange(1,numSubTrees+1):
 		MSA = ID + '/' + 'subtree' + str(i) + '.a2m'
 		outputName = ID + '/' + 'subtree' + str(i) + '.ml'
-		with open('HYPNO.debug','w') as debugFh:
-			debugFh.write('HYPNO debug info:\n\n')
 		myTree = GenTree()
 		myTree.makeTree(MSA , outputName)
 
