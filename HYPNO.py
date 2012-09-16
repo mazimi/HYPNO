@@ -27,9 +27,6 @@ def makeSubtrees(ID, msa, tree, threshold):
 	kerfTree.kerfRun( fileTree, fileMSA, threshold, outputDir)
 	with open(ID+'/HYPNO.debug','w') as debugFh:
 		debugFh.write('HYPNO debug info:\n\n')
-	#OLD: subprocess.call(["python kerf.py --msa-file " + ID + '/' + msa + " --tree-file " + ID + '/' + tree + " --output-directory " + ID + " --threshold " + str(threshold)], shell=True)
-	#TODO
-	#Should do some error handling
 
 #Retreives DNA sequences for each subtree
 #from Kerf generated csv MSA map file
@@ -63,6 +60,7 @@ def getDNASeqs(ID, msa, pred, execMin):
 			else:
 				print '** HYPNO input error: given MSA headers must contain valid UniProt accessions.', \
 					  '\tAccession missing for given line: '+line
+				sys.exit(1)
 		#TODO
 		#Pass list of accession IDs to DNA sequence lookup script (uniprot.py)
 		#Create FASTA files with DNA sequence for each clade (uniprot.py)
