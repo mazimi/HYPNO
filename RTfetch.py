@@ -36,6 +36,7 @@ class RTfetch:
 			# (8) ORF ending index
 			# (9) Mapped DNA sequence, with gaps
 			# (10) Error message
+			# (11) Debug Info
 	def getSeqID(self, uniprotID):
 
 		# orfFinder: nucleotide ORF search in all 6 frames
@@ -167,7 +168,7 @@ class RTfetch:
 		# output: tuple (UniProt accession, NCBI nucleotide accession, DNA ORF matches)
 		# NOTE: BioPython BLAST documentation: http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc81
 		def taxBLASTn(uniprotID,taxName,proSeq):
-			mapTuple = ()
+			mapTuple, debug = (), ''
 			''' TODO: try catch error handling '''
 			try:
 				result_handle = NCBIWWW.qblast("tblastn", "nr", proSeq, expect = .0001, entrez_query = taxName+'[organism]')
@@ -186,14 +187,15 @@ class RTfetch:
 				Hit_to = int(topHit.findtext("Hit_hsps/Hsp/Hsp_hit-to"))
 				match = re.search(r'gi\|(\w+)\|',Hit_id)
 				GI = match.group(1)
+				debug += 'tBLASTn hit accession and match indices: '+str(accessionNCBI)+' ('+str(Hit_to)+', '+str(Hit_from)+')\n'
 				dna_seq = chromParse(GI,Hit_from,Hit_to)
 				if dna_seq != '':
 					mapTuple = (accessionNCBI,dna_seq,'TBLASTN',midseq)
-					return mapTuple
+					return mapTuple, debug
 				else:
-					return mapTuple
+					return mapTuple, debug
 			except:
-				return mapTuple
+				return mapTuple, debug
 
 		# chromParse: uses Entrez to parse DNA sequence out of chromosome according to BLAST output coordinates
 		# input: chromosome GI number (0), start coordinate (1), end coordinate (2)
@@ -242,24 +244,26 @@ class RTfetch:
 		# NOTE: Programmatic Uniprot Access: http://www.uniprot.org/faq/28#id_mapping_examples
 		def tryNCBI(uniprotID):
 			''' TODO: recursive retry? try catch error handling '''
-			url, nucID = 'http://www.uniprot.org/mapping/', ''			# Base URL
+			url, nucID, debug = 'http://www.uniprot.org/mapping/', '', ''	# Base URL
 			# DB Identifiers: http://www.uniprot.org/faq/28#id_mapping_examples
 			mapTuple = ()
 			nucID = accessionHTTP('REFSEQ_NT_ID', uniprotID)
 			if nucID == '':
-				return mapTuple
+				return mapTuple, debug
 			try:
 				genomic = Entrez.efetch(db="nucleotide", id=nucID, rettype="gb")
 				gbHeader = genomic.read(200)
 				match = re.search('([\d]+) bp',gbHeader)
 				size = int(match.group(1))
+				debug += 'For UniProt accession '+uniprotID+', the retrieved NCBI accession is '+nucID+'\n'
 				if size > 10000:
 						# if genomic --> return 'pass' and move to tBLASTn
-						return 'pass'
+						debug += '\tSwitching to tBLASTn mode\n'
+						return 'pass', debug
 				mapTuple = (nucID,getSeq(nucID),'NCBI')
 			except:
 				pass
-			return mapTuple
+			return mapTuple, debug
 
 		# tryEMBL: tries does uniprot --> EMBL nucleotide ID fetch
 		# input: uniprot ID
@@ -267,12 +271,13 @@ class RTfetch:
 		# NOTE: Programmatic Uniprot Access: http://www.uniprot.org/faq/28#id_mapping_examples
 		def tryEMBL(uniprotID):
 			''' TODO: recursive retry? try catch error handling '''
-			url = 'http://www.uniprot.org/mapping/'			# Base URL
+			url, debug = 'http://www.uniprot.org/mapping/', ''			# Base URL
 			# DB Identifiers: http://www.uniprot.org/faq/28#id_mapping_examples
 			mapTuple = ()
 			nucID = accessionHTTP('EMBL_ID', uniprotID)
 			if nucID == '':
-				return mapTuple
+				debug += 'EMBL accession could not be retrieved, switching to tBLASTn mode.\n'
+				return mapTuple, debug
 			try:
 				genomic = urllib2.Request('http://www.ebi.ac.uk/ena/data/view/'+nucID+'&display=text')
 				genText = urllib2.urlopen(genomic)
@@ -280,13 +285,15 @@ class RTfetch:
 				match = re.search('([\d]+) BP',IDline)
 				size = int(match.group(1))
 				genText.close()
+				debug += 'For UniProt accession '+uniprotID+', the retrieved EMBL accession is '+nucID+'\n'
 				if size > 10000:
+						debug += '\tSwitching to tBLASTn mode\n'
 						# if genomic --> return and move to tBLASTn
-						return mapTuple
+						return mapTuple, debug
 				mapTuple = (nucID,getSeq(nucID),'EMBL')
 			except:
 				pass
-			return mapTuple
+			return mapTuple, debug
 
 		# getTaxon: get common name for organism corresponding to uniprot ID
 		# input: uniprot ID
@@ -298,7 +305,7 @@ class RTfetch:
 				page = urllib.urlopen('http://www.uniprot.org/uniprot/'+uniprotID+'.fasta').read()
 				pageLines = page.split('\n')
 				carrot = pageLines.pop(0)						# Remove fasta description > ...
-				match = re.search(r'OS=(\w+\s+\w+)\s',carrot)
+				match = re.search(r'OS=(\w+\s+[^A-Z]+)\s+[A-Z]',carrot)
 				taxName = match.group(1)
 				return taxName
 			except:			
@@ -364,36 +371,40 @@ class RTfetch:
 
 		# Set all default values to null for error catching
 		nucID, nucSequence, aligned, pID, startORF, endORF, source, mappedDNA, proSeq, errorMessage  = ('null', ) * 10
+		debug = ''
 		(isObsolete, error) = checkObsolete(uniprotID)
 		if isObsolete:
 			errorMessage = error
-			outputTuple = (uniprotID, nucID, source, proSeq, nucSequence, aligned, pID, startORF, endORF, mappedDNA, errorMessage)
+			outputTuple = (uniprotID, nucID, source, proSeq, nucSequence, aligned, pID, startORF, endORF, mappedDNA, errorMessage, debug)
 			return outputTuple
 		table = getGeneticCode(uniprotID) 				# Translation Table for Biopython, default = 1 (standard genetic code)
 		doEMBL = True
-		triTuple = tryNCBI(uniprotID)
+		triTuple, info = tryNCBI(uniprotID)
+		debug += info
 		if triTuple == 'pass':
 			doEMBL = False 								# Skip directly to TBLASTN because you need the GI and genomic coordinates
 		elif len(triTuple) == 0:							# Otherwise, do EMBL search.
-			triTuple = tryEMBL(uniprotID)
+			triTuple, info = tryEMBL(uniprotID)
+			debug += info
 		if len(triTuple) != 0 and doEMBL:
 			proTuple = orfLength(uniprotID)				# proTuple will tell you the length of the protein 
 			min_pro_len, proSeq  = proTuple
 			nucID, nucSequence, source = triTuple
 			dna_seq = Seq(nucSequence)
 			(startORF, endORF, aligned, pID, mappedDNA) = orfFinder(dna_seq, table, min_pro_len, proSeq)
-			outputTuple = (uniprotID, nucID, source, proSeq, nucSequence, aligned, pID, startORF, endORF, mappedDNA, errorMessage)
-		else: 
+			outputTuple = (uniprotID, nucID, source, proSeq, nucSequence, aligned, pID, startORF, endORF, mappedDNA, errorMessage, debug)
+		else:
 			taxon = getTaxon(uniprotID)
 			if taxon != 'null':
 				proTuple = orfLength(uniprotID)				# proTuple will tell you the length of the protein 
 				min_pro_len, proSeq = proTuple					# protein length
-				quadTuple = taxBLASTn(uniprotID,taxon,proSeq)
+				quadTuple, info = taxBLASTn(uniprotID,taxon,proSeq)
+				debug += info
 				if len(quadTuple) != 0:
 					nucID, nucSequence, source, aligned = quadTuple		# Get aligned prot from BLAST rather than AlignIO
 					dna_seq = Seq(nucSequence)
 					(startORF, endORF, dummy, pID, mappedDNA) = orfFinder(dna_seq, table, min_pro_len, proSeq)
-			outputTuple = (uniprotID, nucID, source, proSeq, nucSequence, aligned, pID, startORF, endORF, mappedDNA, errorMessage)
+			outputTuple = (uniprotID, nucID, source, proSeq, nucSequence, aligned, pID, startORF, endORF, mappedDNA, errorMessage, debug)
 		return outputTuple
 
 # create a subclass and override the handler methods
