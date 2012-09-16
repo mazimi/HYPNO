@@ -84,7 +84,6 @@ class DNA2ProtAlign:
 						#Grab next Upper Case codon in seq, check to make sure it codes for current AA (if checkCodons=True),
 						#if match, place Upper Casecodon in DNA MSA sequence, if no match, place '!!!',
 						#move on to next codon.
-						#TODO: How should mismatches be handled?
 						if str(seqDNA[i][indexDNA*3:indexDNA*3+3]) == '***':
 							if gapHandlingDNA == 1:		#Transfer DNA gap to protein
 								currSeq += '---'
@@ -122,7 +121,6 @@ class DNA2ProtAlign:
 						#Grab next Lower Case codon in seq, check to make sure it codes for current AA (if checkCodons=True),
 						#if match, place Lower Case codon in DNA MSA sequence, if no match, place '!!!',
 						#move on to next codon.
-						#TODO: How should mismatches be handled?
 						if str(seqDNA[i][indexDNA*3:indexDNA*3+3]) == '***':
 							if gapHandlingDNA == 1:		#Transfer DNA gap to protein
 								currSeq += '---'
@@ -172,7 +170,6 @@ class DNA2ProtAlign:
 		if len(msaDNA) != len(seqProt):
 			print "Number of protein and DNA sequences does not match!"
 		else:
-			#TODO: output to file/return
 			for i in xrange(0, len(msaDNA)):
 				seqDNArecord[i].seq = msaDNA[i]
 			output_handle = open(fileOutput, "w")
