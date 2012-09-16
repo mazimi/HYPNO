@@ -15,6 +15,8 @@ def initialize(ID, msa, tree):
 	os.mkdir(ID)
 	shutil.copy(msa, ID)	#TODO: change back to move
 	shutil.copy(tree, ID)
+	with open(ID+'/HYPNO.debug','w') as debugFh:
+		debugFh.write('HYPNO debug info:\n\n')
 
 #Calls kerf as a class to split trees into
 #subtrees based on given threshold
@@ -25,8 +27,6 @@ def makeSubtrees(ID, msa, tree, threshold):
 	outputDir = str(ID)
 	kerfTree = Kerf()
 	kerfTree.kerfRun( fileTree, fileMSA, threshold, outputDir)
-	with open(ID+'/HYPNO.debug','w') as debugFh:
-		debugFh.write('HYPNO debug info:\n\n')
 
 #Retreives DNA sequences for each subtree
 #from Kerf generated csv MSA map file
