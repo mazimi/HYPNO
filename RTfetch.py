@@ -75,7 +75,7 @@ class RTfetch:
 									mappedDNA = mapDNA(start,end,seq,aligned)	
 									mappedSeq = Seq(mappedDNA).reverse_complement()
 								# Flip start and end indices because of start/stop index
-								return (end,start,aligned,int(percentID),str(mappedSeq))
+								return (end,start,aligned,percentID,str(mappedSeq))
 							elif gaps < gapsSoFar:	# Trying to maximize percent identity
 								# (See isoform discussion: http://www.uniprot.org/faq/30)
 								gapsSoFar = gaps
@@ -87,7 +87,7 @@ class RTfetch:
 								startSoFar, endSoFar, alignedSoFar, querySoFar, pidSoFar = start, end, aligned, alignedQuery, percentID
 						aa_start += 1
 			mappedDNA = mapDNA(startSoFar,endSoFar,seq,alignedSoFar,querySoFar)
-			return startSoFar,endSoFar,alignedSoFar,int(pidSoFar),mappedDNA
+			return startSoFar,endSoFar,alignedSoFar,pidSoFar,mappedDNA
 
 		# mapDNA: mapping DNA sequence to the Needleman-Wunsch aligned predicted protein, relative to UniProt sequence
 		# input: start index (0), end index (1), DNA sequence (2), aligned translated protein (3), aligned original query (4)
@@ -118,7 +118,7 @@ class RTfetch:
 							-outfile tempAlign.needle -auto')
 			needle = open('tempAlign.needle','rU')
 			alignment = AlignIO.read(needle,"emboss")
-			i, counter, gaps = 0, 0, 0
+			i, counter, gaps = float(0), 0, 0
 			sequence0, sequence1= alignment[0], alignment[1]
 			seq0, seq1 = str(sequence0.seq), str(sequence1.seq)
 			chars0, chars1 = list(seq0), list(seq1)
@@ -130,13 +130,13 @@ class RTfetch:
 					gaps += 1
 					pass
 				else:
-					i += 1
+					i += float(1)
 				counter += 1
-			percent = 100*i/len(seq0)
+			percent = float(100)*i/float(len(seq0))
 			# Dispose of temporary FASTA files
-			os.remove('tempA.fasta')	
+			os.remove('tempA.fasta')
 			os.remove('tempB.fasta')
-			return str(percent),seq0.upper(),seq1.upper(), gaps
+			return float(percent),seq0.upper(),seq1.upper(), gaps
 
 		# orfLength: determines length of ORFs based on protein sequence length via uniprot query
 		# input: uniprot ID (0)
