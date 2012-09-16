@@ -141,7 +141,7 @@ def makeSubTrees(ID, numSubTrees):
 		MSA = ID + '/' + 'subtree' + str(i) + '.a2m'
 		outputName = ID + '/' + 'subtree' + str(i) + '.ml'
 		myTree = GenTree()
-		myTree.makeTree(MSA , outputName)
+		myTree.makeTree(MSA , outputName, ID)
 
 
 #Takes newick format output of each subtree
