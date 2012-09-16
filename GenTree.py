@@ -12,10 +12,10 @@ class GenTree:
         pass
 
     #Generates tree using FastTree
-    def makeTree( self, MSA , name):
+    def makeTree( self, MSA , name, ID):
         cmd = "FastTree -gtr -nt " + MSA + " > " + name
         pro = Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        with open('HYPNO.debug','a') as debugFh:
+        with open(ID+'/HYPNO.debug','a') as debugFh:
             for line in pro.communicate():
                 debugFh.write(line.rstrip())
             debugFh.write('\n')
