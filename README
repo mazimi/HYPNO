@@ -11,10 +11,10 @@ information to differentiate between nearly identical protein sequences.
 SOFTWARE DEPENDENCIES
 =====================
 
-Python 2.7		(http://www.python.org/getit/releases/2.7/)
-Biopython 		(http://biopython.org/wiki/Download)
-EMBOSS Needle 	(http://www.ebi.ac.uk/Tools/psa/emboss_needle/)
-FastTree 		(http://www.microbesonline.org/fasttree/#Install)
+Python 2.7      (http://www.python.org/getit/releases/2.7/)
+Biopython       (http://biopython.org/wiki/Download)
+EMBOSS Needle   (http://www.ebi.ac.uk/Tools/psa/emboss_needle/)
+FastTree        (http://www.microbesonline.org/fasttree/#Install)
 
 
 USAGE
@@ -23,17 +23,17 @@ USAGE
 $ python HYPNO.py MSA-file tree-file [options...]
 
 Options:
-	--k <PPWID>		Minimum pairwise percent identity (PPWID) for determining
-					subtree grouping (default: 90.0).
+    --k <PPWID>     Minimum pairwise percent identity (PPWID) for determining
+                    subtree grouping (default: 90.0).
 
-	--n <PPPID>		Minimum "predicted protein" percent identity (PPPID) between
-					retreived nucleotide sequence and expected sequence for
-					retreived sequence to be accepted (default: 95.0).
+    --n <PPPID>     Minimum "predicted protein" percent identity (PPPID) between
+                    retreived nucleotide sequence and expected sequence for
+                    retreived sequence to be accepted (default: 95.0).
 
-	--s <PCS>		Minimum percent of correct sequences (PCS) required in an
-					acceptable tree. This values depends on --n <PPPID>. Any
-					value less than 100.0 may result in an output tree with
-					fewer taxa than the input tree. (default: 100.0)
+    --s <PCS>       Minimum percent of correct sequences (PCS) required in an
+                    acceptable tree. This values depends on --n <PPPID>. Any
+                    value less than 100.0 may result in an output tree with
+                    fewer taxa than the input tree. (default: 100.0)
 
 
 EXTENDED USAGE
@@ -49,35 +49,35 @@ refine subtree definition and nucleotide and tree acceptance criteria.
 $ python HYPNO.py MSA-file tree-file [options...]
 
 Options:
-	--k <PPWID>		Minimum pairwise percent identity (PPWID) for determining
-					subtree grouping (default: 90.0). Adjusting this parameter
-					may alter the size of subtrees for which topology is
-					reevaluated. Very large values may result in no subtrees and
-					no change in tree topology while very small values may
-					result in overly large subtrees and incorrect taxa grouping.
+    --k <PPWID>     Minimum pairwise percent identity (PPWID) for determining
+                    subtree grouping (default: 90.0). Adjusting this parameter
+                    may alter the size of subtrees for which topology is
+                    reevaluated. Very large values may result in no subtrees and
+                    no change in tree topology while very small values may
+                    result in overly large subtrees and incorrect taxa grouping.
 
-	--n <PPPID>		Minimum "predicted protein" percent identity (PPPID) between
-					retreived nucleotide sequence and expected sequence for
-					retreived sequence to be accepted (default: 95.0). This
-					parameter determines acceptance criteria for retreived
-					nucleotide sequences. Retreived nucleotide sequences are 
-					translated to protein using appropriate codon translation
-					tables. If the percent identity between the translated
-					retreived sequence and the original protein sequence falls
-					below the threshold, the nucleotide sequence is not
-					considered representative of the protein sequence and is
-					discarded from the alignment and subsequently the tree.
+    --n <PPPID>     Minimum "predicted protein" percent identity (PPPID) between
+                    retreived nucleotide sequence and expected sequence for
+                    retreived sequence to be accepted (default: 95.0). This
+                    parameter determines acceptance criteria for retreived
+                    nucleotide sequences. Retreived nucleotide sequences are 
+                    translated to protein using appropriate codon translation
+                    tables. If the percent identity between the translated
+                    retreived sequence and the original protein sequence falls
+                    below the threshold, the nucleotide sequence is not
+                    considered representative of the protein sequence and is
+                    discarded from the alignment and subsequently the tree.
 
-	--s <PCS>		Minimum percent of correct sequences (PCS) required in an
-					acceptable tree. This values depends on --n <PPPID>. Any
-					value less than 100.0 may result in an output tree with
-					fewer taxa than the input tree. (default: 100.0) This
-					parameter determines what fraction of sequences can be 
-					discarded from the alignment and subsequently the tree as 
-					a result of the unavailability of sequences or poor identity 
-					between protein sequence and retreived nucleotide sequence. 
-					Setting the PPPID and PCS value very high (overly stringent) 
-					may result in the production of no output tree.
+    --s <PCS>       Minimum percent of correct sequences (PCS) required in an
+                    acceptable tree. This values depends on --n <PPPID>. Any
+                    value less than 100.0 may result in an output tree with
+                    fewer taxa than the input tree. (default: 100.0) This
+                    parameter determines what fraction of sequences can be 
+                    discarded from the alignment and subsequently the tree as 
+                    a result of the unavailability of sequences or poor identity 
+                    between protein sequence and retreived nucleotide sequence. 
+                    Setting the PPPID and PCS value very high (overly stringent) 
+                    may result in the production of no output tree.
 
 
 REFERENCES
