@@ -20,7 +20,7 @@ FastTree        (http://www.microbesonline.org/fasttree/#Install)
 USAGE
 =====
 
-$ python HYPNO.py MSA-file tree-file [options...]
+$ python HYPNO.py <MSA-file> <tree-file> [options...]
 
 Options:
     --k <PPWID>     Minimum pairwise percent identity (PPWID) for determining
@@ -46,7 +46,7 @@ format. Both files must contain valid Uniprot accession for each sequence/leaf
 that are consistent between files. Additional options may be specified to 
 refine subtree definition and nucleotide and tree acceptance criteria.
 
-$ python HYPNO.py MSA-file tree-file [options...]
+$ python HYPNO.py <MSA-file> <tree-file> [options...]
 
 Options:
     --k <PPWID>     Minimum pairwise percent identity (PPWID) for determining
