@@ -21,6 +21,16 @@ class GenTree:
             debugFh.write('\n')
         return 0
 
+    #Recalculate branch lengths keeping topology fixed
+    def makeTreeBranchLengths( self, tree, MSA , name, ID):
+        cmd = "FastTree -nome -mllen -intree " + MSA + tree + " > " + name
+        pro = Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        with open(ID+'/HYPNO.debug','a') as debugFh:
+            for line in pro.communicate():
+                debugFh.write(line.rstrip())
+            debugFh.write('\n')
+        return 0
+
     #Takes in a tree and prunes the larger tree where there exist
     #identified subtrees with 3 or more leafs (based on Kerf CSV).
     def pruneTree( self, tree, treeHierarchy, listLongIDs):
