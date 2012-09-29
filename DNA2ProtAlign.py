@@ -47,6 +47,16 @@ class DNA2ProtAlign:
 
 			return seqDNA
 
+		#Read DNA IDs from file
+		def getDNAid(fileDNA):
+			seqDNAid = []
+			handle = open(fileDNA, "rU")
+			for record in SeqIO.parse(handle, "fasta"):
+				seqDNAid.append(record.id)
+			handle.close()
+
+			return seqDNAid
+
 		#Retreive entire DNA record from file to use for FASTA reconstruction
 		#record.seq will be overwritten, other information will be preserved
 		def getDNArecord(fileDNA):
@@ -58,11 +68,23 @@ class DNA2ProtAlign:
 
 			return seqDNAid
 
+		def filterProtSeqs(idProt, idDNA, seqProt):
+			seqProtFiltered = []
+			idProtFiltered = []
+			for i in xrange(0,len(idDNA)):
+				for j in xrange(0,len(idProt)):
+					if idDNA[i] == idProt[j]:
+						seqProtFiltered.append(seqProt[j])
+						idProtFiltered.append(idProt[j])
+						break
+
+			return seqProtFiltered, idProtFiltered
+
 		#Reverse-translate protein to corresponding DNA sequence from retreived
 		#DNA sequence.
 		def translateProt2DNAmsa(seqProt, seqDNA, idProt):
 			checkCodons = False	#Set 'True' to check that codons match residues
-			gapHandlingDNA = 2	#Set '1' to transfer gap to protein
+			gapHandlingDNA = 1	#Set '1' to transfer gap to protein
 								#Set '2' to use aligned codon from nearest neighbor
 								#Set '3' TBD
 
@@ -163,9 +185,11 @@ class DNA2ProtAlign:
 		seqProt = getProtSeq(fileProt)
 		idProt = getProtID(fileProt)
 		seqDNA = getDNASeq(fileDNA)
+		idDNA = getDNAid(fileDNA)
 		seqDNArecord = getDNArecord(fileDNA)
+		seqProtFiltered, idProtFiltered = filterProtSeqs(idProt, idDNA, seqProt)
 
-		msaDNA = translateProt2DNAmsa(seqProt, seqDNA, idProt)
+		msaDNA = translateProt2DNAmsa(seqProtFiltered, seqDNA, idProtFiltered)
 
 		if len(msaDNA) != len(seqProt):
 			print "Number of protein and DNA sequences does not match!"
