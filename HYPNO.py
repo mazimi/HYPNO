@@ -61,9 +61,6 @@ def getDNASeqs(ID, msa, pred, execMin):
 				print '** HYPNO input error: given MSA headers must contain valid UniProt accessions.', \
 					  '\tAccession missing for given line: '+line
 				sys.exit(1)
-		#TODO
-		#Pass list of accession IDs to DNA sequence lookup script (uniprot.py)
-		#Create FASTA files with DNA sequence for each clade (uniprot.py)
 
 	# number of missed / totalTried nucleotide retrievals must be >= execMin
 	missed, totalTried, missedList = float(0), float(0), []
@@ -146,16 +143,25 @@ def makeSubTrees(ID, numSubTrees):
 #and places back into site where it was
 #pruned in original tree
 def mergeTree(ID, tree, treeHierarchy, listLongID):
-	#TODO: re-calculate lengths (FastTree?)
 	tree = ID + '/' + tree
 
 	myTree = GenTree()
 	prunedTree = myTree.pruneTree(tree, treeHierarchy, listLongID)
 	mergedTree = myTree.insertSubTrees(ID, prunedTree, treeHierarchy)
 
-	output_handle = open(ID + '/hybridTree.ml', "w")
+	output_handle = open(ID + '/topoTree.ml', "w")
 	output_handle.write(mergedTree)
 	output_handle.close()
+
+
+def calcBranchLengths(ID, MSA):
+	tree = ID + '/topoTree.ml'
+	MSA = ID + '/' + MSA
+	outputName = ID + '/hybridTree.ml'
+
+	myTree = GenTree()
+	myTree.makeTreeBranchLengths(tree, MSA , outputName, ID)
+
 
 # Checks for proper input formatting
 def validateInputs(msa, tree):
@@ -194,19 +200,21 @@ def main():
 	msa, tree, kerf, pred, execMin = args.msa_file, args.tree_file, args.k, args.n, args.s 
 
 	ID = time()									#Used to create directory to store files
-	print 'Step 0 of 5: Input validation'
+	print 'Step 0 of 6: Input validation'
 	validateInputs(msa,tree)
 	initialize(str(ID), msa, tree)				#Create dir and move input files
-	print 'Step 1 of 5: Generating subtrees'
+	print 'Step 1 of 6: Generating subtrees'
 	makeSubtrees(str(ID), msa, tree, kerf)		#Run Kerf
-	print 'Step 2 of 5: Retrieving DNA sequences'
+	print 'Step 2 of 6: Retrieving DNA sequences'
 	numSubTrees, treeHierarchy, listLongID = getDNASeqs(str(ID), msa, pred, execMin)
-	print 'Step 3 of 5: Mapping DNA sequences to given protein MSA'
+	print 'Step 3 of 6: Mapping DNA sequences to given protein MSA'
 	alignDNASeqs(str(ID), msa, tree, numSubTrees)
-	print 'Step 4 of 5: Re-estimating subtree topologies'
+	print 'Step 4 of 6: Re-estimating subtree topologies'
 	makeSubTrees(str(ID), numSubTrees)
-	print 'Step 5 of 5: Reinserting subtrees into gene tree topology'
+	print 'Step 5 of 6: Reinserting subtrees into gene tree topology'
 	mergeTree(str(ID), tree, treeHierarchy, listLongID)
+	print 'Step 5 of 6: Recalculating tree branch lengths'
+	calcBranchLengths(str(ID), msa)
 	print 'HYPNO execution completed.'
 
 
