@@ -191,7 +191,7 @@ class DNA2ProtAlign:
 
 		msaDNA = translateProt2DNAmsa(seqProtFiltered, seqDNA, idProtFiltered)
 
-		if len(msaDNA) != len(seqProt):
+		if len(msaDNA) != len(seqProtFiltered):
 			print "Number of protein and DNA sequences does not match!"
 		else:
 			for i in xrange(0, len(msaDNA)):
