@@ -142,7 +142,6 @@ class RTfetch:
 		# input: uniprot ID (0)
 		# output: tuple of (length of protein, protein sequence)
 		def orfLength(protID):
-			''' TODO: single recursive retry, followed by handling url connection errors '''
 			page = urllib.urlopen('http://www.uniprot.org/uniprot/'+protID+'.fasta').read()
 			pageLines = page.split('\n')
 			pageLines.pop(0)
@@ -153,7 +152,6 @@ class RTfetch:
 		# input: accession (0)
 		# output: DNA sequence (0)
 		def getSeq(accession):
-			''' TODO: single recursive retry (for entrez?), followed by handling url connection errors '''
 			try:
 				handle = Entrez.efetch(db="nucleotide", id=accession, rettype="fasta")
 				record = SeqIO.read(handle, "fasta")
@@ -169,7 +167,6 @@ class RTfetch:
 		# NOTE: BioPython BLAST documentation: http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc81
 		def taxBLASTn(uniprotID,taxName,proSeq):
 			mapTuple, debug = (), ''
-			''' TODO: try catch error handling '''
 			try:
 				result_handle = NCBIWWW.qblast("tblastn", "nr", proSeq, expect = .0001, entrez_query = taxName+'[organism]')
 				string = result_handle.read()
@@ -202,7 +199,6 @@ class RTfetch:
 		# output: DNA sequence (0)
 		# NOTE: BioPython BLAST documentation: http://biopython.org/DIST/docs/tutorial/Tutorial.html#htoc81
 		def chromParse(GI,start,end):
-			''' TODO: recursive retry? try catch error handling '''
 			handle = Entrez.efetch(db="nucleotide", 
 						id=GI, 
 						rettype="fasta", 
@@ -215,7 +211,6 @@ class RTfetch:
 			return dna_seq
 
 		def accessionHTTP(to, accession):
-			''' TODO: recursive retry? try catch error handling '''
 			url, nucID = 'http://www.uniprot.org/mapping/', ''			# Base URL
 			# DB Identifiers: http://www.uniprot.org/faq/28#id_mapping_examples
 			params = {
@@ -243,7 +238,6 @@ class RTfetch:
 		# output: tuple (uniprot ID, NCBI nucleotid ID,DNA sequence, source)
 		# NOTE: Programmatic Uniprot Access: http://www.uniprot.org/faq/28#id_mapping_examples
 		def tryNCBI(uniprotID):
-			''' TODO: recursive retry? try catch error handling '''
 			url, nucID, debug = 'http://www.uniprot.org/mapping/', '', ''	# Base URL
 			# DB Identifiers: http://www.uniprot.org/faq/28#id_mapping_examples
 			mapTuple = ()
@@ -270,7 +264,6 @@ class RTfetch:
 		# output: tuple (uniprot ID, EMBL nucleotide ID, DNA sequence, source)
 		# NOTE: Programmatic Uniprot Access: http://www.uniprot.org/faq/28#id_mapping_examples
 		def tryEMBL(uniprotID):
-			''' TODO: recursive retry? try catch error handling '''
 			url, debug = 'http://www.uniprot.org/mapping/', ''			# Base URL
 			# DB Identifiers: http://www.uniprot.org/faq/28#id_mapping_examples
 			mapTuple = ()
@@ -300,7 +293,6 @@ class RTfetch:
 		# output: organism common name
 		# NOTE: Programmatic Uniprot Access: http://www.uniprot.org/faq/28#id_mapping_examples
 		def getTaxon(uniprotID):
-			''' TODO: recursive retry? try catch error handling '''
 			try:
 				page = urllib.urlopen('http://www.uniprot.org/uniprot/'+uniprotID+'.fasta').read()
 				pageLines = page.split('\n')
@@ -315,7 +307,6 @@ class RTfetch:
 		# input: UniProt ID (0)
 		# output: tuple containing (obsolete flag, cause of error) (0)
 		def checkObsolete(inputID):
-			''' TODO: recursive retry? try catch error handling '''
 			page = urllib.urlopen('http://www.uniprot.org/uniprot/'+inputID)
 			read = page.read()
 			page.close()
@@ -338,33 +329,64 @@ class RTfetch:
 		# output: integer for genetic code (0)
 		# NOTE: Translation tables: http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
 		def getGeneticCode(uniprotID):
-			''' TODO: recursive retry? try catch error handling '''
 			try:
-				value = 1 		# Preset: default genetic code integer value
+				# Preset: default genetic code integer value
+				value, mitochondrial, scientificName = 1, 0, ''
 				TaxonomicLineage = []
 				ns = '{http://uniprot.org/uniprot}'
 				pageXML = urllib.urlopen('http://www.uniprot.org/uniprot/'+uniprotID+'.xml').read()
 				tree = xml.etree.ElementTree.fromstring(pageXML)
 				item = tree.getiterator(ns+'uniprot')[0]
 				taxa = item.find(ns+'entry').find(ns+'organism').find(ns+'lineage').findall(ns+'taxon')
+				
+				localization = item.find(ns+'entry').find(ns+'geneLocation')
+				for key, locale in localization.attrib.iteritems():
+					if locale.lower() == 'mitochondrion':
+						mitochondrial = True
+					
+				names = item.find(ns+'entry').find(ns+'organism').findall(ns+'name')
+				for name in names:
+					for key, nameType in name.attrib.iteritems():
+						if nameType.lower() == 'scientific':
+							scientificName = name.text
+					
 				for taxon in taxa:
 					TaxonomicLineage.append(taxon.text)
 				for taxon in TaxonomicLineage:
-					''' TODO: code alternative translation tables 2, 3, 5 plus mitochondrial checking '''
-					# 2: check encoded on Mitochondrion
-					# if taxon == 'Vertebrata':		
-					# 	value = 2
-					# 3: check encoded on Mitochondrion, and use scientific names for
-					# Saccharomyces cerevisiae, Candida glabrata, Hansenula saturnus, and Kluyveromyces thermotolerans
-					# elif taxon == 'Saccharomyces' or taxon == 'Candida' or taxon == 'Hansenula' or taxon == 'Kluyveromyces':
-					# 	value = 3
-					# 5: check encoded on Mitochondrion
-					# elif taxon == 'Nematoda' or taxon == 'Mollusca' or taxon == 'Arthropoda':
-					# 	value = 5
-					if taxon == 'Asterozoa' or taxon == 'Echinozoa' or taxon ==  'Rhabditophora':
+					if taxon == 'Vertebrata' and mitochondrial:		
+						value = 2
+					elif scientificName == 'Saccharomyces cerevisiae' or scientificName == 'Candida glabrata'  \
+						or scientificName == 'Hansenula saturnus' or scientificName == 'luyveromyces thermotolerans' \
+						and mitochondrial:
+						value = 3
+					elif taxon == 'Ascaris' or taxon == 'Caenorhabditis' or taxon == 'Bivalvia' \
+						or taxon == 'Polyplacophora' or taxon == 'Artemia' or taxon == 'Drosophila' \
+						and mitochondrial:
+						value = 5
+					elif taxon == 'Asterozoa' or taxon == 'Echinozoa' or taxon ==  'Rhabditophora' \
+						and mitochondrial:
 						value = 9
+					elif taxon == 'Euplotidae':
+						value = 10
 					elif taxon == 'Bacteria' or taxon == 'Archaea':
 						value = 11
+					elif scientificName == 'Candida albicans' or scientificName == 'Candida cylindracea' \
+						or scientificName == 'Candida melibiosica' or scientificName == 'Candida parapsilosis' \
+						or scientificName == 'Candida rugosa' and mitochondrial:
+						value = 12
+					elif taxon == 'Blepharisma':
+						value = 15
+					elif taxon == 'Chlorophyceae' or scientificName == 'Spizellomyces punctatus' \
+						and mitochondrial:
+						value = 16
+					elif taxon == 'Trematoda' and mitochondrial:
+						value = 21
+					elif scientificName == 'Scenedesmus obliquus' and mitochondrial:
+						value = 22
+					elif scientificName == 'Thraustochytrium aureum' and mitochondrial:
+						value = 23
+					elif taxon == 'Pterobranchia' and mitochondrial:
+						value = 24
 				return value
 			except:			
 				return 1 		# Exceptional Case: throw default genetic code integer value
@@ -378,15 +400,15 @@ class RTfetch:
 			outputTuple = (uniprotID, nucID, source, proSeq, nucSequence, aligned, pID, startORF, endORF, mappedDNA, errorMessage, debug)
 			return outputTuple
 		table = getGeneticCode(uniprotID) 				# Translation Table for Biopython, default = 1 (standard genetic code)
-		doEMBL = True
+		straight2tBLASTn = False
 		triTuple, info = tryNCBI(uniprotID)
 		debug += info
 		if triTuple == 'pass':
-			doEMBL = False 								# Skip directly to TBLASTN because you need the GI and genomic coordinates
+			straight2tBLASTn = True 						# Skip directly to TBLASTN because you need the GI and genomic coordinates
 		elif len(triTuple) == 0:							# Otherwise, do EMBL search.
 			triTuple, info = tryEMBL(uniprotID)
 			debug += info
-		if len(triTuple) != 0 and doEMBL:
+		if len(triTuple) != 0 and not straight2tBLASTn:
 			proTuple = orfLength(uniprotID)				# proTuple will tell you the length of the protein 
 			min_pro_len, proSeq  = proTuple
 			nucID, nucSequence, source = triTuple
@@ -431,7 +453,7 @@ class HTMLUniparse(HTMLParser):
 			elif demerged:
 				self.demerged = 1
 			return 0
-		else:	
+		else:
 			match = re.search('obsolete',data.lower())
 			if match:
 				self.obsolete = 1
