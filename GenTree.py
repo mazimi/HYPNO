@@ -114,7 +114,7 @@ class GenTree:
 						#print str(iterSubTree+1) + ', ' + str(subTreeEnd)
 						#print newickSubString
 						newickSubString = newickString[subTreeStart:subTreeEnd]
-					print newickSubString
+					#print newickSubString
 					#Check for nesting in parentheses
 					balanceParentheses = findSubtreeString(newickSubString)
 					while (balanceParentheses != 0):
@@ -124,7 +124,7 @@ class GenTree:
 							subTreeStart -= 1
 						newickSubString = newickString[subTreeStart:subTreeEnd]
 						balanceParentheses = findSubtreeString(newickSubString)
-						print subTreeStart, subTreeEnd, newickSubString
+						#print subTreeStart, subTreeEnd, newickSubString
 					#Grab additional parentheses belonging to this clade
 					subTreeStart -= 1
 					subTreeEnd += 1
@@ -135,7 +135,7 @@ class GenTree:
 						newickSubString = newickString[subTreeStart:subTreeEnd]
 					#Strip out non-parentheses
 					newickSubString = newickString[subTreeStart+1:subTreeEnd-1]
-					print subTreeStart, subTreeEnd, newickSubString
+					#print subTreeStart, subTreeEnd, newickSubString
 					#Once subtree is found, replace it with the subtree number placed in brackets
 					newickString = newickString.replace(newickSubString, '<' + str(iterSubTree+1) + '>')
 			iterSubTree += 1
