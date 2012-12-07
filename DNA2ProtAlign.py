@@ -5,7 +5,7 @@
 #translates the protein to DNA, preserving indel characters and overall alignment.
 
 from Bio import SeqIO, Seq, Phylo
-import sys
+import sys, re
 
 class DNA2ProtAlign:
 
@@ -15,7 +15,7 @@ class DNA2ProtAlign:
 	def __init__(self):
 		pass
 
-	def alignDNAseqs(self, fileProt, fileDNA, fileOutput, fileAllTree):
+	def alignDNAseqs(self, fileProt, fileDNA, fileOutput):
 
 		#Read protein sequences from file
 		def getProtSeq(fileProt):
@@ -72,11 +72,15 @@ class DNA2ProtAlign:
 			seqProtFiltered = []
 			idProtFiltered = []
 			for i in xrange(0,len(idDNA)):
-				for j in xrange(0,len(idProt)):
-					if idDNA[i] == idProt[j]:
-						seqProtFiltered.append(seqProt[j])
-						idProtFiltered.append(idProt[j])
-						break
+				matchDNA = re.search(r'([A-N,R-Z][0-9][A-Z][A-Z,0-9][A-Z,0-9][0-9]|[O-Q][0-9][A-Z,0-9][A-Z,0-9][A-Z,0-9][0-9])', idDNA[i])
+				if matchDNA:
+					for j in xrange(0,len(idProt)):
+						matchProt = re.search(r'([A-N,R-Z][0-9][A-Z][A-Z,0-9][A-Z,0-9][0-9]|[O-Q][0-9][A-Z,0-9][A-Z,0-9][A-Z,0-9][0-9])', idProt[j])
+						if matchProt:
+							if matchDNA.group(1) == matchProt.group(1):
+								seqProtFiltered.append(seqProt[j])
+								idProtFiltered.append(matchProt.group(1))
+								break
 
 			return seqProtFiltered, idProtFiltered
 
@@ -109,27 +113,27 @@ class DNA2ProtAlign:
 						if str(seqDNA[i][indexDNA*3:indexDNA*3+3]) == '***':
 							if gapHandlingDNA == 1:		#Transfer DNA gap to protein
 								currSeq += '---'
-							if gapHandlingDNA == 2:
-								fullTree = Phylo.read(fileAllTree, 'newick')
-								#DEBUG: Draw an ASCII tree, just for Nima
-								print Phylo.draw_ascii(fullTree)
-								minDistance = 99999					#Set very high value
-								nearestNeighbor = -1				#Start at -1 in case no neighbor found
-								#Loop over all proteins in clade looking for nearest neighbor with matching AA at the
-								#same position and transfer codon if available.
-								for k in xrange(0, len(seqProt)):
-									if (idProt[i] != idProt[k]) and (seqProt[k][j] == seqProt[i][j] ):	#TODO: Currently only checking for AA w/ same case
-										distNodes = fullTree.distance(idProt[i], idProt[k])
-										#DEBUG: Print distance values
-										print "Distance between " + str(idProt[i]) + " and " + str(idProt[k])
-										print distNodes
-										if distNodes < minDistance:		#Select current leaf it's the closer to target than last nearest
-											minDistance = distNodes
-											nearestNeighbor = k
-								if nearestNeighbor > -1:		#A nearest neighbor with matching AA was found!
-									#DEBUG: List nearest neighbor with matching AA
-									print "Nearest neighbor is: " + str(idProt[nearestNeighbor])
-									currSeq += seqDNA[nearestNeighbor][indexDNA*3:indexDNA*3+3]
+							# if gapHandlingDNA == 2:
+							# 	fullTree = Phylo.read(fileAllTree, 'newick')
+							# 	#DEBUG: Draw an ASCII tree, just for Nima
+							# 	print Phylo.draw_ascii(fullTree)
+							# 	minDistance = 99999					#Set very high value
+							# 	nearestNeighbor = -1				#Start at -1 in case no neighbor found
+							# 	#Loop over all proteins in clade looking for nearest neighbor with matching AA at the
+							# 	#same position and transfer codon if available.
+							# 	for k in xrange(0, len(seqProt)):
+							# 		if (idProt[i] != idProt[k]) and (seqProt[k][j] == seqProt[i][j] ):	#TODO: Currently only checking for AA w/ same case
+							# 			distNodes = fullTree.distance(idProt[i], idProt[k])
+							# 			#DEBUG: Print distance values
+							# 			print "Distance between " + str(idProt[i]) + " and " + str(idProt[k])
+							# 			print distNodes
+							# 			if distNodes < minDistance:		#Select current leaf it's the closer to target than last nearest
+							# 				minDistance = distNodes
+							# 				nearestNeighbor = k
+							# 	if nearestNeighbor > -1:		#A nearest neighbor with matching AA was found!
+							# 		#DEBUG: List nearest neighbor with matching AA
+							# 		print "Nearest neighbor is: " + str(idProt[nearestNeighbor])
+							# 		currSeq += seqDNA[nearestNeighbor][indexDNA*3:indexDNA*3+3]
 						else:
 							if checkCodons:
 								if str(Seq.translate(seqDNA[i][indexDNA*3:indexDNA*3+3])) == str(seqProt[i][j]):
@@ -146,27 +150,27 @@ class DNA2ProtAlign:
 						if str(seqDNA[i][indexDNA*3:indexDNA*3+3]) == '***':
 							if gapHandlingDNA == 1:		#Transfer DNA gap to protein
 								currSeq += '---'
-							if gapHandlingDNA == 2:
-								fullTree = Phylo.read(fileAllTree, 'newick')
-								#DEBUG: Draw an ASCII tree, just for Nima
-								print Phylo.draw_ascii(fullTree)
-								minDistance = 99999					#Set very high value
-								nearestNeighbor = -1				#Start at -1 in case no neighbor found
-								#Loop over all proteins in clade looking for nearest neighbor with matching AA at the
-								#same position and transfer codon if available.
-								for k in xrange(0, len(seqProt)):
-									if (idProt[i] != idProt[k]) and (seqProt[k][j] == seqProt[i][j] ):	#TODO: Currently only checking for AA w/ same case
-										distNodes = fullTree.distance(idProt[i], idProt[k])
-										#DEBUG: Print distance values
-										print "Distance between " + str(idProt[i]) + " and " + str(idProt[k])
-										print distNodes
-										if distNodes < minDistance:		#Select current leaf it's the closer to target than last nearest
-											minDistance = distNodes
-											nearestNeighbor = k
-								if nearestNeighbor > -1:		#A nearest neighbor with matching AA was found!
-									#DEBUG: List nearest neighbor with matching AA
-									print "Nearest neighbor is: " + str(idProt[nearestNeighbor])
-									currSeq += seqDNA[nearestNeighbor][indexDNA*3:indexDNA*3+3]
+							# if gapHandlingDNA == 2:
+							# 	fullTree = Phylo.read(fileAllTree, 'newick')
+							# 	#DEBUG: Draw an ASCII tree, just for Nima
+							# 	print Phylo.draw_ascii(fullTree)
+							# 	minDistance = 99999					#Set very high value
+							# 	nearestNeighbor = -1				#Start at -1 in case no neighbor found
+							# 	#Loop over all proteins in clade looking for nearest neighbor with matching AA at the
+							# 	#same position and transfer codon if available.
+							# 	for k in xrange(0, len(seqProt)):
+							# 		if (idProt[i] != idProt[k]) and (seqProt[k][j] == seqProt[i][j] ):	#TODO: Currently only checking for AA w/ same case
+							# 			distNodes = fullTree.distance(idProt[i], idProt[k])
+							# 			#DEBUG: Print distance values
+							# 			print "Distance between " + str(idProt[i]) + " and " + str(idProt[k])
+							# 			print distNodes
+							# 			if distNodes < minDistance:		#Select current leaf it's the closer to target than last nearest
+							# 				minDistance = distNodes
+							# 				nearestNeighbor = k
+							# 	if nearestNeighbor > -1:		#A nearest neighbor with matching AA was found!
+							# 		#DEBUG: List nearest neighbor with matching AA
+							# 		print "Nearest neighbor is: " + str(idProt[nearestNeighbor])
+							# 		currSeq += seqDNA[nearestNeighbor][indexDNA*3:indexDNA*3+3]
 						else:
 							if checkCodons:
 								upperSeqProtein = seqProt[i][j].upper()
@@ -189,9 +193,10 @@ class DNA2ProtAlign:
 		seqDNArecord = getDNArecord(fileDNA)
 		seqProtFiltered, idProtFiltered = filterProtSeqs(idProt, idDNA, seqProt)
 
+
 		msaDNA = translateProt2DNAmsa(seqProtFiltered, seqDNA, idProtFiltered)
 
-		if len(msaDNA) != len(seqProt):
+		if len(msaDNA) != len(seqProtFiltered):
 			print "Number of protein and DNA sequences does not match!"
 		else:
 			for i in xrange(0, len(msaDNA)):
