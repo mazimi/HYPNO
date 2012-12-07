@@ -12,7 +12,7 @@ SOFTWARE DEPENDENCIES
 =====================
 
 Python 2.7      (http://www.python.org/getit/releases/2.7/)
-Biopython       (http://biopython.org/wiki/Download)
+Biopython 1.6      (http://biopython.org/wiki/Download)
 EMBOSS Needle   (http://www.ebi.ac.uk/Tools/psa/emboss_needle/)
 FastTree        (http://www.microbesonline.org/fasttree/#Install)
 
