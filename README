@@ -20,20 +20,35 @@ FastTree        (http://www.microbesonline.org/fasttree/#Install)
 USAGE
 =====
 
-$ python HYPNO.py <MSA-file> <tree-file> [options...]
+$ python HYPNO.py --msa <msafile> -tree <treefile> [options...]
 
 Options:
-    --k <PPWID>     Minimum pairwise percent identity (PPWID) for determining
-                    subtree grouping (default: 90.0).
+    --k <PPWID>         Minimum pairwise percent identity (PPWID) for 
+                        determining subtree grouping (default: 90.0).
 
-    --n <PPPID>     Minimum "predicted protein" percent identity (PPPID) between
-                    retreived nucleotide sequence and expected sequence for
-                    retreived sequence to be accepted (default: 95.0).
+    --n <PPPID>         Minimum "predicted protein" percent identity (PPPID) 
+                        between retrieved nucleotide sequence and expected
+                        sequence for retrieved sequence to be accepted 
+                        (default: 95.0).
 
-    --s <PCS>       Minimum percent of correct sequences (PCS) required in an
-                    acceptable tree. This values depends on --n <PPPID>. Any
-                    value less than 100.0 may result in an output tree with
-                    fewer taxa than the input tree. (default: 100.0)
+    --s <PCS>           Minimum percent of correct sequences (PCS) required in 
+                        an acceptable tree. This values depends on --n <PPPID>. 
+                        Any value less than 100.0 may result in an output tree 
+                        with fewer taxa than the input tree. (default: 100.0)
+
+    --opl               When specified, output tree undergoes midpoint rooting 
+                        and branch lengths are calculated while tree topology is
+                        kept constant.
+
+
+OUTPUTS
+=======
+
+For an input MSA file 'foo.msa', the program outputs:
+
+    foo.hypno.msa       This file is the nucleotide MSA in Aligned FASTA format.
+    foo.hypno.tree      This file contains the re-estimated tree topology in 
+                        Newick format.
 
 
 EXTENDED USAGE
@@ -46,42 +61,51 @@ format. Both files must contain valid Uniprot accession for each sequence/leaf
 that are consistent between files. Additional options may be specified to 
 refine subtree definition and nucleotide and tree acceptance criteria.
 
-$ python HYPNO.py <MSA-file> <tree-file> [options...]
+$ python HYPNO.py --msa <msafile> -tree <treefile> [options...]
 
 Options:
-    --k <PPWID>     Minimum pairwise percent identity (PPWID) for determining
-                    subtree grouping (default: 90.0). Adjusting this parameter
-                    may alter the size of subtrees for which topology is
-                    reevaluated. Very large values may result in no subtrees and
-                    no change in tree topology while very small values may
-                    result in overly large subtrees and incorrect taxa grouping.
+    --tree <treefile>   When specified, the input tree topology is re-estimated 
+                        using the nucleotide MSA. When this argument is omitted, 
+                        nucleotide sequences are retrieved and overlayed on the 
+                        protein MSA, without generating any phylogenetic trees.
 
-    --n <PPPID>     Minimum "predicted protein" percent identity (PPPID) between
-                    retreived nucleotide sequence and expected sequence for
-                    retreived sequence to be accepted (default: 95.0). This
-                    parameter determines acceptance criteria for retreived
-                    nucleotide sequences. Retreived nucleotide sequences are 
-                    translated to protein using appropriate codon translation
-                    tables. If the percent identity between the translated
-                    retreived sequence and the original protein sequence falls
-                    below the threshold, the nucleotide sequence is not
-                    considered representative of the protein sequence and is
-                    discarded from the alignment and subsequently the tree.
+    --k <PPWID>         Minimum pairwise percent identity (PPWID) for 
+                        determining subtree grouping (default: 90.0). Adjusting 
+                        this parameter may alter the size of subtrees for which 
+                        topology is reevaluated. Very large values may result in
+                        no subtrees and no change in tree topology while very
+                        small values may result in overly large subtrees and 
+                        incorrect taxa grouping.
 
-    --s <PCS>       Minimum percent of correct sequences (PCS) required in an
-                    acceptable tree. This values depends on --n <PPPID>. Any
-                    value less than 100.0 may result in an output tree with
-                    fewer taxa than the input tree. (default: 100.0) This
-                    parameter determines what fraction of sequences can be 
-                    discarded from the alignment and subsequently the tree as 
-                    a result of the unavailability of sequences or poor identity 
-                    between protein sequence and retreived nucleotide sequence. 
-                    Setting the PPPID and PCS value very high (overly stringent) 
-                    may result in the production of no output tree.
+    --n <PPPID>         Minimum "predicted protein" percent identity (PPPID) 
+                        between retrieved nucleotide sequence and expected 
+                        sequence for retrieved sequence to be accepted 
+                        (default: 95.0). This parameter determines acceptance 
+                        criteria for retrieved nucleotide sequences. retrieved 
+                        nucleotide sequences are translated to protein using 
+                        appropriate codon translation tables. If the percent 
+                        identity between the translated retrieved sequence and 
+                        the original protein sequence falls below the threshold, 
+                        the nucleotide sequence is not considered representative 
+                        of the protein sequence and is discarded from the 
+                        alignment and subsequently the tree.
 
+    --s <PCS>           Minimum percent of correct sequences (PCS) required in 
+                        an acceptable tree. This values depends on --n <PPPID>. 
+                        Any value less than 100.0 may result in an output tree 
+                        with fewer taxa than the input tree. (default: 100.0) 
+                        This parameter determines what fraction of sequences can 
+                        be discarded from the alignment and subsequently the 
+                        tree as a result of the unavailability of sequences or 
+                        poor identity between protein sequence and retrieved 
+                        nucleotide sequence. Setting the PPPID and PCS value 
+                        very high (overly stringent) may result in the production 
+                        of no output tree.
 
-REFERENCES
-==========
-
-TBD
-
+    --opl               When specified, output tree undergoes midpoint rooting 
+                        and branch lengths are calculated while tree topology is
+                        kept constant. The resultant tree with rooting and 
+                        optimized branch lengths will be located in 
+                        'foo.opl.hypno.tree' (where 'foo' is the input MSA
+                        filename). When (--opl) is not specified, the HYPNO 
+                        output contains only a topology tree.

@@ -116,26 +116,27 @@ class RTfetch:
 					seqB.write('> seqB\n'+template+'\n')
 			os.system('needle -asequence tempA.fasta -sprotein1 -bsequence tempB.fasta -sprotein2 -gapopen 10 -gapextend 0.5 \
 							-outfile tempAlign.needle -auto')
-			needle = open('tempAlign.needle','rU')
-			alignment = AlignIO.read(needle,"emboss")
-			i, counter, gaps = float(0), 0, 0
-			sequence0, sequence1= alignment[0], alignment[1]
-			seq0, seq1 = str(sequence0.seq), str(sequence1.seq)
-			chars0, chars1 = list(seq0), list(seq1)
-			while counter < len(chars0):
-				topAA = chars0[counter]
-				bottomAA = chars1[counter]
-				# Considers gaps and mismatches in both sequences for computing percent identity
-				if topAA.upper() != bottomAA.upper():
-					gaps += 1
-					pass
-				else:
-					i += float(1)
-				counter += 1
-			percent = float(100)*i/float(len(seq0))
-			# Dispose of temporary FASTA files
+			with open('tempAlign.needle','rU') as needle:
+				alignment = AlignIO.read(needle,"emboss")
+				i, counter, gaps = float(0), 0, 0
+				sequence0, sequence1= alignment[0], alignment[1]
+				seq0, seq1 = str(sequence0.seq), str(sequence1.seq)
+				chars0, chars1 = list(seq0), list(seq1)
+				while counter < len(chars0):
+					topAA = chars0[counter]
+					bottomAA = chars1[counter]
+					# Considers gaps and mismatches in both sequences for computing percent identity
+					if topAA.upper() != bottomAA.upper():
+						gaps += 1
+						pass
+					else:
+						i += float(1)
+					counter += 1
+				percent = float(100)*i/float(len(seq0))
+				# Dispose of temporary FASTA files
 			os.remove('tempA.fasta')
 			os.remove('tempB.fasta')
+			os.remove('tempAlign.needle')
 			return float(percent),seq0.upper(),seq1.upper(), gaps
 
 		# orfLength: determines length of ORFs based on protein sequence length via uniprot query

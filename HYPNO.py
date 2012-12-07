@@ -11,10 +11,11 @@ from DNA2ProtAlign import DNA2ProtAlign
 from GenTree import GenTree
 
 #Creates a temporary directory to store data files
-def initialize(ID, msa, tree):
+def initialize(ID, msa, tree=None):
 	os.mkdir(ID)
 	shutil.copy(msa, ID)	#TODO: change back to move
-	shutil.copy(tree, ID)
+	if tree:
+		shutil.copy(tree, ID)
 	with open(ID+'/HYPNO.debug','w') as debugFh:
 		debugFh.write('HYPNO debug info:\n\n')
 
@@ -23,7 +24,6 @@ def initialize(ID, msa, tree):
 def makeSubtrees(ID, msa, tree, threshold):
 	fileMSA = str(msa)
 	fileTree = str(tree)
-	threshold = float(threshold)
 	outputDir = str(ID)
 	kerfTree = Kerf()
 	kerfTree.kerfRun( fileTree, fileMSA, threshold, outputDir)
@@ -118,22 +118,20 @@ def getDNASeqs(ID, msa, pred, execMin):
 #retreived DNA sequence and inserts DNA into
 #original protein alignment
 #TODO: Determine if DNA should be re-aligned
-def alignDNASeqs(ID, msa, tree, numSubTrees):
+def alignDNASeqs(ID, msa, numSubTrees):
 	for i in xrange(1, numSubTrees+1):
-		fileProt = ID + '/' + msa.split('.')[0] + 'sf' + str(i) + '.a2m'
+		fileProt = ID + '/' + msa.split('.')[0] + 'sf' + str(i) + '.' + msa.split('.')[-1]
 		fileDNA = ID + '/DNAseqs' + str(i) + '.fasta'
-		fileOutput = ID + '/' + 'subtree' + str(i) + '.a2m'
-		fileAllTree = ID + '/' + tree
+		fileOutput = ID + '/' + 'subtree' + str(i) + '.' + msa.split('.')[-1]
 
 		myDNA = DNA2ProtAlign()
-		myDNA.alignDNAseqs(fileProt, fileDNA, fileOutput, fileAllTree)
+		myDNA.alignDNAseqs(fileProt, fileDNA, fileOutput)
 
 #For all subtrees, takes DNA alignment and
 #generates new subtree using GTR algorithm
-def makeSubTrees(ID, numSubTrees):
-	#TODO: Is A2M = Aligned FASTA? If not, convert. How to handle lower case columns? Delete?
+def reestimateSubtrees(ID, numSubTrees, msa):
 	for i in xrange(1,numSubTrees+1):
-		MSA = ID + '/' + 'subtree' + str(i) + '.a2m'
+		MSA = ID + '/' + 'subtree' + str(i) + '.' + msa.split('.')[-1]
 		outputName = ID + '/' + 'subtree' + str(i) + '.ml'
 		myTree = GenTree()
 		myTree.makeTree(MSA , outputName, ID)
@@ -142,29 +140,50 @@ def makeSubTrees(ID, numSubTrees):
 #Takes newick format output of each subtree
 #and places back into site where it was
 #pruned in original tree
-def mergeTree(ID, tree, treeHierarchy, listLongID):
+def mergeTree(ID, tree, treeHierarchy, listLongID, MSA):
 	tree = ID + '/' + tree
 
 	myTree = GenTree()
 	prunedTree = myTree.pruneTree(tree, treeHierarchy, listLongID)
 	mergedTree = myTree.insertSubTrees(ID, prunedTree, treeHierarchy)
 
-	output_handle = open(ID + '/topoTree.ml', "w")
+	match = re.search(r'^([^\.]+)', MSA)
+	output_handle = open(match.group(1) + '.hypno.tree', "w")
 	output_handle.write(mergedTree)
 	output_handle.close()
 
 
 def calcBranchLengths(ID, MSA):
-	tree = ID + '/topoTree.ml'
+	match = re.search(r'^([^\.]+)', MSA)
+	tree = match.group(1) + '.hypno.tree'
 	MSA = ID + '/' + MSA
-	outputName = ID + '/hybridTree.ml'
+	outputName = match.group(1) + '.opl.hypno.tree'
 
 	myTree = GenTree()
 	myTree.makeTreeBranchLengths(tree, MSA , outputName, ID)
 
 
+def mergeAlignments(ID, MSA, numSubTrees):
+	match = re.search(r'^([^\.]+)', MSA)
+	with open(match.group(1) + '.hypno.msa', 'w') as outfile:
+		for i in xrange(1, numSubTrees+1):
+			with open(ID + '/' + 'subtree' + str(i) + '.' + MSA.split('.')[-1]) as infile:
+				for line in infile:
+					outfile.write(line)
+
+
+def makeSingleSubtree(ID, MSA):
+	shutil.copy(MSA, ID + '/' + MSA.split('.')[0] + 'sf1.' + MSA.split('.')[-1])
+	with open(ID + '/' + MSA.split('.')[0] + '.csv', 'w') as outfile:
+		with open(ID + '/' + MSA) as infile:
+			for line in infile:
+				match = re.search(r'^>.*([A-N,R-Z][0-9][A-Z][A-Z,0-9][A-Z,0-9][0-9]|[O-Q][0-9][A-Z,0-9][A-Z,0-9][A-Z,0-9][0-9])', line)
+				if match:
+					outfile.write('1, ' + match.group(1) + '\n')
+
+
 # Checks for proper input formatting
-def validateInputs(msa, tree):
+def validateInputs(msa, tree=None):
 	# Check for existence and proper FASTA formatting of input MSA
 	try:
 		msaHandle = open(msa, "rU")
@@ -172,50 +191,69 @@ def validateInputs(msa, tree):
 		print '** HYPNO input error: Given MSA file location does not exist or is not accessible: '+msa
 		sys.exit(1)
 	try:
-		SeqIO.parse(msaHandle, "fasta").next()
+		AlignIO.parse(msaHandle, "fasta").next()
 	except:
 		print '** HYPNO input error: improper MSA file format, must be aligned FASTA or a2m format: '+msa
 		sys.exit(1)	
-	try:
-		treeHandle = open(tree, "rU")
-	except:
-		print '** HYPNO input error: Given tree file location does not exist or is not accessible: '+tree
-		sys.exit(1)
-	try:
-		Phylo.read(treeHandle, "newick")
-	except:
-		print '** HYPNO input error: improper tree file format, must be Newick format: '+msa
-		sys.exit(1)
+
+	if tree:
+		try:
+			treeHandle = open(tree, "rU")
+		except:
+			print '** HYPNO input error: Given tree file location does not exist or is not accessible: '+tree
+			sys.exit(1)
+		try:
+			Phylo.read(treeHandle, "newick")
+		except:
+			print '** HYPNO input error: improper tree file format, must be Newick format: '+msa
+			sys.exit(1)
 	return 0
+
 
 def main():
 	#Parse arguments specifying MSA and TREE files
 	parser = argparse.ArgumentParser(description='Method for HYbrid Protein NucleOtide phylogenetic gene tree reconstruction')
-	parser.add_argument('--msa-file', type = str, help='Name of input multiple sequence alignment file (requires aligned FASTA or a2m format)', required=True)
-	parser.add_argument('--tree-file', type = str, help='Name of input tree file (requires newick format)', required=True)
+	parser.add_argument('--msa', type = str, help='Name of input multiple sequence alignment file (requires aligned FASTA or UCSC a2m format)', required=True)
+	parser.add_argument('--tree', type = str, help='Name of input tree file (requires newick format)', required=False)
 	parser.add_argument('--k', default = 90.0, type = float, help='Minimum subtree pairwise percent identity among leaf sequences for subtree topology to be re-estimated using retrieved nucleotide sequences (default: 90.0)', required=False)
 	parser.add_argument('--n', default = 95.0, type = float, help='Minimum "predicted protein" percent identity to the expected sequence for a retrieved nucleotide sequence to be accepted (default: 95.0)', required=False)
 	parser.add_argument('--s', default = 100.0, type = float, help='Minimum percent of correct retrieved nucleotide sequences (e.g. those passing --n threshold) for program execution to continue (default: 100.0)', required=False)
+	parser.add_argument('--opl', default = False, action = 'store_true', help='Recalculate branch lengths holding tree topology fixed', required=False)
 	args = parser.parse_args()
-	msa, tree, kerf, pred, execMin = args.msa_file, args.tree_file, args.k, args.n, args.s 
+	msa, tree, kerf, pred, execMin, opl = args.msa, args.tree, args.k, args.n, args.s, args.opl
 
 	ID = time()									#Used to create directory to store files
-	print 'Step 0 of 6: Input validation'
-	validateInputs(msa,tree)
-	initialize(str(ID), msa, tree)				#Create dir and move input files
-	print 'Step 1 of 6: Generating subtrees'
-	makeSubtrees(str(ID), msa, tree, kerf)		#Run Kerf
-	print 'Step 2 of 6: Retrieving DNA sequences'
-	numSubTrees, treeHierarchy, listLongID = getDNASeqs(str(ID), msa, pred, execMin)
-	print 'Step 3 of 6: Mapping DNA sequences to given protein MSA'
-	alignDNASeqs(str(ID), msa, tree, numSubTrees)
-	print 'Step 4 of 6: Re-estimating subtree topologies'
-	makeSubTrees(str(ID), numSubTrees)
-	print 'Step 5 of 6: Reinserting subtrees into gene tree topology'
-	mergeTree(str(ID), tree, treeHierarchy, listLongID)
-	print 'Step 5 of 6: Recalculating tree branch lengths'
-	calcBranchLengths(str(ID), msa)
-	print 'HYPNO execution completed.'
+	if tree:
+		print 'Step 0 of 5: Input validation'
+		validateInputs(msa,tree)
+		initialize(str(ID), msa, tree)				#Create dir and move input files
+		print 'Step 1 of 5: Generating subtrees'
+		makeSubtrees(str(ID), msa, tree, kerf)		#Run Kerf
+		print 'Step 2 of 5: Retrieving DNA sequences'
+		numSubTrees, treeHierarchy, listLongID = getDNASeqs(str(ID), msa, pred, execMin)
+		print 'Step 3 of 5: Mapping DNA sequences to given protein MSA'
+		alignDNASeqs(str(ID), msa, numSubTrees)
+		mergeAlignments(str(ID), msa, numSubTrees)
+		print 'Step 4 of 5: Re-estimating subtree topologies'
+		reestimateSubtrees(str(ID), numSubTrees, msa)
+		print 'Step 5 of 5: Reinserting subtrees into gene tree topology'
+		mergeTree(str(ID), tree, treeHierarchy, listLongID, msa)
+		if opl:
+			print 'Optional Step: Recalculating tree branch lengths'
+			calcBranchLengths(str(ID), msa)
+		print 'HYPNO execution completed.'
+	else:
+		print 'Step 0 of 2: Input validation'
+		validateInputs(msa)
+		initialize(str(ID), msa)					#Create dir and move input files
+		makeSingleSubtree(str(ID), msa)				#Create a CSV with entire MSA in one "subtree"
+		print 'Step 1 of 2: Retrieving DNA sequences'
+		numSubTrees, treeHierarchy, listLongID = getDNASeqs(str(ID), msa, pred, execMin)
+		print 'Step 2 of 2: Mapping DNA sequences to given protein MSA'
+		alignDNASeqs(str(ID), msa, numSubTrees)
+		mergeAlignments(str(ID), msa, numSubTrees)
+		print 'HYPNO execution completed.'
+
 
 
 if __name__ == '__main__':
