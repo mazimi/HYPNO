@@ -24,7 +24,6 @@ def initialize(ID, msa, tree=None):
 def makeSubtrees(ID, msa, tree, threshold):
 	fileMSA = str(msa)
 	fileTree = str(tree)
-	threshold = float(threshold)
 	outputDir = str(ID)
 	kerfTree = Kerf()
 	kerfTree.kerfRun( fileTree, fileMSA, threshold, outputDir)
@@ -121,19 +120,18 @@ def getDNASeqs(ID, msa, pred, execMin):
 #TODO: Determine if DNA should be re-aligned
 def alignDNASeqs(ID, msa, numSubTrees):
 	for i in xrange(1, numSubTrees+1):
-		fileProt = ID + '/' + msa.split('.')[0] + 'sf' + str(i) + '.a2m'
+		fileProt = ID + '/' + msa.split('.')[0] + 'sf' + str(i) + '.' + msa.split('.')[-1]
 		fileDNA = ID + '/DNAseqs' + str(i) + '.fasta'
-		fileOutput = ID + '/' + 'subtree' + str(i) + '.a2m'
+		fileOutput = ID + '/' + 'subtree' + str(i) + '.' + msa.split('.')[-1]
 
 		myDNA = DNA2ProtAlign()
 		myDNA.alignDNAseqs(fileProt, fileDNA, fileOutput)
 
 #For all subtrees, takes DNA alignment and
 #generates new subtree using GTR algorithm
-def makeSubTrees(ID, numSubTrees):
-	#TODO: Is A2M = Aligned FASTA? If not, convert. How to handle lower case columns? Delete?
+def reestimateSubtrees(ID, numSubTrees, msa):
 	for i in xrange(1,numSubTrees+1):
-		MSA = ID + '/' + 'subtree' + str(i) + '.a2m'
+		MSA = ID + '/' + 'subtree' + str(i) + '.' + msa.split('.')[-1]
 		outputName = ID + '/' + 'subtree' + str(i) + '.ml'
 		myTree = GenTree()
 		myTree.makeTree(MSA , outputName, ID)
@@ -169,13 +167,13 @@ def mergeAlignments(ID, MSA, numSubTrees):
 	match = re.search(r'^([^\.]+)', MSA)
 	with open(match.group(1) + '.hypno.msa', 'w') as outfile:
 		for i in xrange(1, numSubTrees+1):
-			with open(ID + '/' + 'subtree' + str(i) + '.a2m') as infile:
+			with open(ID + '/' + 'subtree' + str(i) + '.' + MSA.split('.')[-1]) as infile:
 				for line in infile:
 					outfile.write(line)
 
 
 def makeSingleSubtree(ID, MSA):
-	shutil.copy(MSA, ID + '/' + MSA.split('.')[0] + 'sf1.a2m')
+	shutil.copy(MSA, ID + '/' + MSA.split('.')[0] + 'sf1.' + MSA.split('.')[-1])
 	with open(ID + '/' + MSA.split('.')[0] + '.csv', 'w') as outfile:
 		with open(ID + '/' + MSA) as infile:
 			for line in infile:
@@ -193,7 +191,7 @@ def validateInputs(msa, tree=None):
 		print '** HYPNO input error: Given MSA file location does not exist or is not accessible: '+msa
 		sys.exit(1)
 	try:
-		SeqIO.parse(msaHandle, "fasta").next()
+		AlignIO.parse(msaHandle, "fasta").next()
 	except:
 		print '** HYPNO input error: improper MSA file format, must be aligned FASTA or a2m format: '+msa
 		sys.exit(1)	
@@ -215,12 +213,12 @@ def validateInputs(msa, tree=None):
 def main():
 	#Parse arguments specifying MSA and TREE files
 	parser = argparse.ArgumentParser(description='Method for HYbrid Protein NucleOtide phylogenetic gene tree reconstruction')
-	parser.add_argument('--msa', type = str, help='Name of input multiple sequence alignment file (requires aligned FASTA or UCSC a2m format)', required=True)
-	parser.add_argument('--tree', type = str, help='Name of input tree file (requires newick format)', required=False)
-	parser.add_argument('--k', default = 90.0, type = float, help='Minimum subtree pairwise percent identity among leaf sequences for subtree topology to be re-estimated using retrieved nucleotide sequences (default: 90.0)', required=False)
-	parser.add_argument('--n', default = 95.0, type = float, help='Minimum "predicted protein" percent identity to the expected sequence for a retrieved nucleotide sequence to be accepted (default: 95.0)', required=False)
-	parser.add_argument('--s', default = 100.0, type = float, help='Minimum percent of correct retrieved nucleotide sequences (e.g. those passing --n threshold) for program execution to continue (default: 100.0)', required=False)
-	parser.add_argument('--opl', default = False, action = 'store_true', help='Recalculate branch lengths holding tree topology fixed', required=False)
+	parser.add_argument('--msa', type = str, help='Input Multiple Sequence Alignment: the user must provide this argument followed by the path to an alignment of amino acid sequences, with UniProt accessions included in the sequence headers. HYPNO will retrieve the corresponding nucleic acid sequences and use the provided alignment as a template for constructing a nucleotide MSA. (requires aligned FASTA or UCSC a2m format)', required=True)
+	parser.add_argument('--tree', type = str, help='Tree re-estimation: specifying this argument along with an input tree filename results in re-estimatation of tree topology based on nucleotide sequences. If this argument is not provided, HYPNO retrieves nucleic acid sequences, overlays them on the original protein MSA and outputs this nucleotide MSA without generating a tree. (requires newick format)', required=False)
+	parser.add_argument('--k', default = 90.0, type = float, help='Subtree selection: the "subtree selection" fractional sequence identity cutoff as input to the Kerf algorithm (default: 90). To override the default setting, type "--k <X>", where X is a real number between 0 and 100. For example, to set the subtree selection value to 93, one should type "--k 93.0". (default: 90.0)', required=False)
+	parser.add_argument('--n', default = 95.0, type = float, help='PercentID match: the minimum fractional sequence identity that the translation of a retrieved nucleotide sequence must have relative to the expected protein sequence for it to be accepted (default: 95). To override the default setting, type "--n <X>", where X is a real number between 0 and 100. For example, to set the percentID match value to 80, one should type "--n 80.0". (default: 95.0)', required=False)
+	parser.add_argument('--s', default = 100.0, type = float, help='Retrieval minimum: the minimum fraction of nucleotide sequences that must be retrieved in order for HYPNO to continue (default: 100). In the case that a retrieval minimum of less than 100 percent is specified and HYPNO encounters a protein sequence for which a nucleotide sequence with sufficient sequence identity is unavailable, HYPNO continues executing and excludes the sequence(s) from the final nucleotide MSA and tree outputs. To override the default setting, type "--s <X>", where X is a real number between 0 and 100. For example, to set the retrieval minimum value to 90, one should type "--s 90.0". (default: 100.0)', required=False)
+	parser.add_argument('--opl', default = False, action = 'store_true', help='Branch length optimization: when this argument is specified, HYPNO outputs the expected nucleotide tree as "foo.hypno.tree" but also performs midpoint rooting on the tree and calculates branch lengths, holding the tree topology fixed. The output of this branch length optimization can be found in "foo.opl.hypno.tree". (default: False)', required=False)
 	args = parser.parse_args()
 	msa, tree, kerf, pred, execMin, opl = args.msa, args.tree, args.k, args.n, args.s, args.opl
 
@@ -237,7 +235,7 @@ def main():
 		alignDNASeqs(str(ID), msa, numSubTrees)
 		mergeAlignments(str(ID), msa, numSubTrees)
 		print 'Step 4 of 5: Re-estimating subtree topologies'
-		makeSubTrees(str(ID), numSubTrees)
+		reestimateSubtrees(str(ID), numSubTrees, msa)
 		print 'Step 5 of 5: Reinserting subtrees into gene tree topology'
 		mergeTree(str(ID), tree, treeHierarchy, listLongID, msa)
 		if opl:
