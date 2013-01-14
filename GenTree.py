@@ -36,6 +36,7 @@ class GenTree:
 			msaFile = open(MSA, 'rU')
 			treeFile = open(tree, 'rU')
 			msaFilteredFile = open(MSA + '_filtered', 'w')
+			flagHeader = False
 			flagKeepSeq = False
 
 			treeString = treeFile.read()
@@ -43,6 +44,7 @@ class GenTree:
 			for line in msaFile:
 				matchHeader = re.search(r'^\>', line)
 				if matchHeader:
+					flagHeader = True
 					matchUniprot = re.search(r'([A-N,R-Z][0-9][A-Z][A-Z,0-9][A-Z,0-9][0-9]|[O-Q][0-9][A-Z,0-9][A-Z,0-9][A-Z,0-9][0-9])', line)
 					if matchUniprot:
 						matchUniprotTree = re.search(re.escape(matchUniprot.group(1)), treeString)
@@ -52,9 +54,13 @@ class GenTree:
 							flagKeepSeq = False
 					else:
 						flagKeepSeq = False
+				else:
+					flagHeader = False
 
-				if flagKeepSeq:
+				if (flagHeader == False) and flagKeepSeq:
 					msaFilteredFile.write(line)
+				elif flagHeader and flagKeepSeq:
+					msaFilteredFile.write('>' + matchUniprot.group(1) + ' HYPNO filtered output\n')
 
 			msaFile.close()
 			treeFile.close()
@@ -74,70 +80,29 @@ class GenTree:
 	#Takes in a tree and prunes the larger tree where there exist
 	#identified subtrees with 3 or more leafs (based on Kerf CSV).
 	def pruneTree( self, tree, treeHierarchy, listLongIDs):
-
-		#Check to see that the number of open paranthesis
-		#and close paranthesis are balanced
-		#(returns the difference between the number of
-		#open and close paranthesis in a string)
-		def findSubtreeString(newickSubString):
-			countOpen = newickSubString.count('(')
-			countClose = newickSubString.count(')')
-			return (countOpen - countClose)
-
-		newickHandle = open(tree, 'rU')
-		newickString = newickHandle.readline()
+		#Read in newick tree
+		objTree = Phylo.read(tree, "newick")
+		newickString = objTree.format("newick")
 
 		iterSubTree = 0
 		for subtree in treeHierarchy:
 			if subtree >= 3:
-				#Build dynamic regex string
+				#Parse out first and last leaves in tree
 				myLongID1 = listLongIDs[iterSubTree+1][0]
-				myLongID1 = myLongID1.replace('|', '\|')
-				#myRegEx1 = r'(\(' + myLongID1 + r'|' + myLongID1 + r')'
-				myRegEx1 = r'(' + myLongID1 + r')'
-				#Check for first accession ID within substring
-				match1 = re.search(myRegEx1, newickString)
-				if match1:
-					#Pick out substring from match to end of newick string
-					subTreeStart = match1.start()
-					subTreeEnd = match1.end()
-					newickSubString = newickString[subTreeStart:subTreeEnd]
-					#Search for last accession ID in substring starting from
-					#first match and expanding string length until number of
-					#paranthesis is balanced and last accession is found
-					myLongID2 = listLongIDs[iterSubTree+1][treeHierarchy[iterSubTree]-1]
-					myLongID2 = myLongID2.replace('|', '\|')
-					myRegEx2 = r'(' + myLongID2 + r')'
-					#print myRegEx1 + ', ' + myRegEx2
-					while (re.search(myRegEx2, newickSubString) == None): #or (findSubtreeString(newickSubString) > 0):
-						subTreeEnd += 1
-						#print str(iterSubTree+1) + ', ' + str(subTreeEnd)
-						#print newickSubString
-						newickSubString = newickString[subTreeStart:subTreeEnd]
-					#print newickSubString
-					#Check for nesting in parentheses
-					balanceParentheses = findSubtreeString(newickSubString)
-					while (balanceParentheses != 0):
-						if (balanceParentheses > 0):
-							subTreeEnd += 1
-						elif (balanceParentheses < 0):
-							subTreeStart -= 1
-						newickSubString = newickString[subTreeStart:subTreeEnd]
-						balanceParentheses = findSubtreeString(newickSubString)
-						#print subTreeStart, subTreeEnd, newickSubString
-					#Grab additional parentheses belonging to this clade
-					subTreeStart -= 1
-					subTreeEnd += 1
-					newickSubString = newickString[subTreeStart:subTreeEnd]
-					while (newickSubString[0] == '(' ) and (newickSubString[-1] == ')' ):
-						subTreeStart -= 1
-						subTreeEnd += 1
-						newickSubString = newickString[subTreeStart:subTreeEnd]
-					#Strip out non-parentheses
-					newickSubString = newickString[subTreeStart+1:subTreeEnd-1]
-					#print subTreeStart, subTreeEnd, newickSubString
-					#Once subtree is found, replace it with the subtree number placed in brackets
-					newickString = newickString.replace(newickSubString, '<' + str(iterSubTree+1) + '>')
+				myLongID2 = listLongIDs[iterSubTree+1][treeHierarchy[iterSubTree]-1]
+				
+				#Identify clade containing most recent common ancestor of two leaves
+				#This can be modified to contain more than 2 leaves
+				objClade = objTree.common_ancestor({"name": myLongID1}, {"name": myLongID2})
+				#Convert clade object to tree object
+				objSubtree = objTree.from_clade(objClade)
+				newickSubString = objSubtree.format("newick")
+				newickSubString = newickSubString.rstrip(';\n')
+				print newickSubString
+				#Replace substring in 
+				newickString = newickString.replace(newickSubString, '<' + str(iterSubTree+1) + '>')
+				print newickString
+
 			iterSubTree += 1
 		
 		return newickString
