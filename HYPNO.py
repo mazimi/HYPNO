@@ -13,11 +13,50 @@ from GenTree import GenTree
 #Creates a temporary directory to store data files
 def initialize(ID, msa, tree=None):
 	os.mkdir(ID)
-	shutil.copy(msa, ID)	#TODO: change back to move
-	if tree:
-		shutil.copy(tree, ID)
+	sanitizeInputs(ID, msa, tree)
 	with open(ID+'/HYPNO.debug','w') as debugFh:
 		debugFh.write('HYPNO debug info:\n\n')
+
+#Ensure that all entries contain valid Uniprot Accessions
+#Produce new input files containing only Uniprot Accessions as identifiers in 'ID'
+def sanitizeInputs(ID, msa, tree=None):
+	#Sanitize MSA
+	msaFile = open(msa, 'rU')
+	msaSanitized = open(ID + '/' + msa, 'w')
+	lineCount = 0
+
+	for line in msaFile:
+		lineCount += 1
+		matchHeader = re.search(r'^\>', line)
+		if matchHeader:
+			matchUniprot = re.search(r'([A-N,R-Z][0-9][A-Z][A-Z,0-9][A-Z,0-9][0-9]|[O-Q][0-9][A-Z,0-9][A-Z,0-9][A-Z,0-9][0-9])', line)
+			if matchUniprot:
+				msaSanitized.write('>' + matchUniprot.group(1) + ' HYPNO input\n')
+			else:
+				debugFh.write('\tMSA header at line ' + lineCount + ' missing valid Uniprot accession.\n')
+				print '** HYPNO input error: given MSA headers must contain valid UniProt accessions.', \
+					  '\tAccession missing for given line: ' + lineCount
+				sys.exit(1)
+		else:
+			msaSanitized.write(line)
+
+	msaFile.close()
+	msaSanitized.close()
+
+	#Sanitize Tree
+	if tree:
+		objTree = Phylo.read(tree, "newick")
+
+		for leaf in objTree.get_terminals():
+			matchUniprot = re.search(r'([A-N,R-Z][0-9][A-Z][A-Z,0-9][A-Z,0-9][0-9]|[O-Q][0-9][A-Z,0-9][A-Z,0-9][A-Z,0-9][0-9])', leaf.name)
+			if matchUniprot:
+				leaf.name = matchUniprot.group(1)
+			else:
+				debugFh.write('\tTerminal \'' + leaf.name + '\' in the newick tree is missing a valid Uniprot accession.\n')
+				print '** HYPNO input error: \'' + leaf.name + '\' in the newick tree is not a valid Uniprot accession.'
+				sys.exit(1)
+
+		Phylo.write(objTree, ID + '/' + tree, "newick")
 
 #Calls kerf as a class to split trees into
 #subtrees based on given threshold
