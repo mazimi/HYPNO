@@ -192,14 +192,18 @@ def mergeTree(ID, tree, treeHierarchy, listLongID, MSA):
 	output_handle.close()
 
 
-def calcBranchLengths(ID, MSA):
+def calcBranchLengths(ID, MSA, MSAtype):
 	match = re.search(r'^([^\.]+)', MSA)
 	tree = match.group(1) + '.hypno.tree'
-	MSA = ID + '/' + MSA
+	if (MSAtype == 'nuc'):
+		shutil.copy(match.group(1) + '.hypno.msa', ID)
+		MSA = ID + '/' + match.group(1) + '.hypno.msa'
+	else:
+		MSA = ID + '/' + MSA
 	outputName = match.group(1) + '.opl.hypno.tree'
 
 	myTree = GenTree()
-	myTree.makeTreeBranchLengths(tree, MSA , outputName, ID)
+	myTree.makeTreeBranchLengths(tree, MSA , outputName, ID, MSAtype)
 
 
 def mergeAlignments(ID, MSA, numSubTrees):
@@ -257,9 +261,10 @@ def main():
 	parser.add_argument('--k', default = 90.0, type = float, help='Subtree selection: the "subtree selection" fractional sequence identity cutoff as input to the Kerf algorithm (default: 90). To override the default setting, type "--k <X>", where X is a real number between 0 and 100. For example, to set the subtree selection value to 93, one should type "--k 93.0". (default: 90.0)', required=False)
 	parser.add_argument('--n', default = 95.0, type = float, help='PercentID match: the minimum fractional sequence identity that the translation of a retrieved nucleotide sequence must have relative to the expected protein sequence for it to be accepted (default: 95). To override the default setting, type "--n <X>", where X is a real number between 0 and 100. For example, to set the percentID match value to 80, one should type "--n 80.0". (default: 95.0)', required=False)
 	parser.add_argument('--s', default = 100.0, type = float, help='Retrieval minimum: the minimum fraction of nucleotide sequences that must be retrieved in order for HYPNO to continue (default: 100). In the case that a retrieval minimum of less than 100 percent is specified and HYPNO encounters a protein sequence for which a nucleotide sequence with sufficient sequence identity is unavailable, HYPNO continues executing and excludes the sequence(s) from the final nucleotide MSA and tree outputs. To override the default setting, type "--s <X>", where X is a real number between 0 and 100. For example, to set the retrieval minimum value to 90, one should type "--s 90.0". (default: 100.0)', required=False)
-	parser.add_argument('--opl', default = False, action = 'store_true', help='Branch length optimization: when this argument is specified, HYPNO outputs the expected nucleotide tree as "foo.hypno.tree" but also performs midpoint rooting on the tree and calculates branch lengths, holding the tree topology fixed. The output of this branch length optimization can be found in "foo.opl.hypno.tree". (default: False)', required=False)
+	parser.add_argument('--opl', default = False, action = 'store_true', help='Branch length optimization: when this argument is specified, HYPNO outputs the expected nucleotide tree as "foo.hypno.tree" but also performs midpoint rooting on the tree and calculates branch lengths using the original protein MSA, holding the tree topology fixed. The output of this branch length optimization can be found in "foo.opl.hypno.tree". (default: False)', required=False)
+	parser.add_argument('--oplnuc', default = False, action = 'store_true', help='Branch length optimization: when this argument is specified, HYPNO outputs the expected nucleotide tree as "foo.hypno.tree" but also performs midpoint rooting on the tree and calculates branch lengths using the nucleotide MSA, holding the tree topology fixed. The output of this branch length optimization can be found in "foo.opl.hypno.tree". (default: False)', required=False)
 	args = parser.parse_args()
-	msa, tree, kerf, pred, execMin, opl = args.msa, args.tree, args.k, args.n, args.s, args.opl
+	msa, tree, kerf, pred, execMin, opl, oplnuc = args.msa, args.tree, args.k, args.n, args.s, args.opl, args.oplnuc
 
 	ID = time()									#Used to create directory to store files
 	if tree:
@@ -279,7 +284,10 @@ def main():
 		mergeTree(str(ID), tree, treeHierarchy, listLongID, msa)
 		if opl:
 			print 'Optional Step: Recalculating tree branch lengths'
-			calcBranchLengths(str(ID), msa)
+			calcBranchLengths(str(ID), msa, 'prot')
+		elif oplnuc:
+			print 'Optional Step: Recalculating tree branch lengths'
+			calcBranchLengths(str(ID), msa, 'nuc')
 		print 'HYPNO execution completed.'
 	else:
 		print 'Step 0 of 2: Input validation'
