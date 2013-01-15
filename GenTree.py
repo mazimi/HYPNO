@@ -29,7 +29,7 @@ class GenTree:
 		return 0
 
 	#Recalculate branch lengths keeping topology fixed
-	def makeTreeBranchLengths( self, tree, MSA , name, ID):
+	def makeTreeBranchLengths( self, tree, MSA , name, ID, MSAtype):
 		#Filter taxa in MSA that are not present in final tree
 		#TODO track number of accessions in MSA and Tree and report mismatch
 		def filterMSA( tree, MSA, ID):
@@ -68,7 +68,10 @@ class GenTree:
 			return 0
 
 		filterMSA(tree, MSA, ID)
-		cmd = "FastTree -nome -mllen -intree " + tree + " " + MSA + "_filtered > " + name
+		if (MSAtype == 'nuc'):
+			cmd = "FastTree -nome -mllen -gtr -nt -intree " + tree + " " + MSA + "_filtered > " + name
+		else:
+			cmd = "FastTree -nome -mllen -intree " + tree + " " + MSA + "_filtered > " + name
 		pro = Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 		with open(ID+'/HYPNO.debug','a') as debugFh:
 			for line in pro.communicate():
@@ -98,10 +101,8 @@ class GenTree:
 				objSubtree = objTree.from_clade(objClade)
 				newickSubString = objSubtree.format("newick")
 				newickSubString = newickSubString.rstrip(';\n')
-				print newickSubString
 				#Replace substring in 
 				newickString = newickString.replace(newickSubString, '<' + str(iterSubTree+1) + '>')
-				print newickString
 
 			iterSubTree += 1
 		
