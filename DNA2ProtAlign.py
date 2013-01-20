@@ -1,4 +1,3 @@
-#!/opt/python/bin/python2.7
 
 #Script that takes in a protein Multiple Sequence Alignment - MSA - (FASTA format)
 #and a file containing the corresponding DNA sequences (FASTA format) and reverse-

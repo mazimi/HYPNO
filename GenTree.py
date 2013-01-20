@@ -1,5 +1,3 @@
-#!/opt/python/bin/python2.7
-
 import re, subprocess
 from subprocess import Popen
 from Bio import Phylo
