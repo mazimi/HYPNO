@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from Bio import Phylo # from Biopython
 from Bio import SeqIO # from Biopython
 import sys
