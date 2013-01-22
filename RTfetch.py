@@ -1,3 +1,5 @@
+#!/usr/bin/env python2.7
+
 from Bio import Entrez, SeqIO, AlignIO
 from xml.etree.ElementTree import ElementTree
 from Bio.Blast import NCBIWWW
