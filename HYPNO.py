@@ -99,6 +99,9 @@ def getDNASeqs(ID, msa, pred, execMin):
 					  '\tAccession missing for given line: '+line
 				sys.exit(1)
 
+	readProt = DNA2ProtAlign()
+	ProtDict = readProt.getAAseqs(msa)
+
 	# number of missed / totalTried nucleotide retrievals must be >= execMin
 	missed, totalTried, missedList = float(0), float(0), []
 	#Retreive DNA sequences using Uniprot IDs (RTFetch)
@@ -111,7 +114,7 @@ def getDNASeqs(ID, msa, pred, execMin):
 		for uniprotID in listAccessionIDs[i]:
 			with open(ID+'/HYPNO.debug','a') as debugFh:
 				totalTried += 1
-				nucFetchTuple = nucFetch.getSeqID(uniprotID)
+				nucFetchTuple = nucFetch.getSeqID(uniprotID, ProtDict[uniprotID])
 				if nucFetchTuple[4] == 'null':
 					missed += 1; missedList.append(uniprotID)
 					if nucFetchTuple[10] != 'null':

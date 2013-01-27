@@ -18,14 +18,14 @@ class RTfetch:
 		Entrez.email = 'bpgHYPNO@gmail.com'
 
 	# getSeqID: Delegates nucleotide sequence fetch
-		# input: self (0), UniProt accession (1)
+		# input: self (0), UniProt accession (1), User-provided protein sequence for said accession
 		# output: 11 element tuple of nucleotide fetch details (see below)
 		# NOTE: Programmatic Uniprot Access: http://www.uniprot.org/faq/28#id_mapping_examples
 			# Tuple indices (all defaults set to 'null', except for index 0):
 			# (0) UniProt ID query
 			# (1) Nucleotide sequence accession
 			# (2) Database source (EMBL, NCBI, TBLASTN)
-			# (3) UniProt amino acid sequence
+			# (3) UniProt amino acid sequence (user provided)
 			# (4) Nucleic acid sequence
 			# (5) Predicted protein sequence, with gaps
 			# (6) Predicted protein % identity to index (3) sequence
@@ -34,7 +34,7 @@ class RTfetch:
 			# (9) Mapped DNA sequence, with gaps
 			# (10) Error message
 			# (11) Debug Info
-	def getSeqID(self, uniprotID):
+	def getSeqID(self, uniprotID, uprotSeq):
 
 		# orfFinder: nucleotide ORF search in all 6 frames
 		# input: nucleic acid sequence (0), translation table integer value (1), target protein length (2),
@@ -182,7 +182,7 @@ class RTfetch:
 				Hit_to = int(topHit.findtext("Hit_hsps/Hsp/Hsp_hit-to"))
 				match = re.search(r'gi\|(\w+)\|',Hit_id)
 				GI = match.group(1)
-				debug += 'tBLASTn hit accession and match indices: '+str(accessionNCBI)+' ('+str(Hit_to)+', '+str(Hit_from)+')\n'
+				debug += '\ttBLASTn hit accession and match indices: '+str(accessionNCBI)+' ('+str(Hit_to)+', '+str(Hit_from)+')\n'
 				dna_seq = chromParse(GI,Hit_from,Hit_to)
 				if dna_seq != '':
 					mapTuple = (accessionNCBI,dna_seq,'TBLASTN',midseq)
@@ -407,8 +407,9 @@ class RTfetch:
 			triTuple, info = tryEMBL(uniprotID)
 			debug += info
 		if len(triTuple) != 0 and not straight2tBLASTn:
-			proTuple = orfLength(uniprotID)				# proTuple will tell you the length of the protein 
-			min_pro_len, proSeq  = proTuple
+			# proTuple = orfLength(uniprotID)				# proTuple will tell you the length of the protein 
+			# min_pro_len, proSeq  = proTuple
+			min_pro_len, proSeq = len(uprotSeq), uprotSeq
 			nucID, nucSequence, source = triTuple
 			dna_seq = Seq(nucSequence)
 			(startORF, endORF, aligned, pID, mappedDNA) = orfFinder(dna_seq, table, min_pro_len, proSeq)
@@ -416,8 +417,9 @@ class RTfetch:
 		else:
 			taxon = getTaxon(uniprotID)
 			if taxon != 'null':
-				proTuple = orfLength(uniprotID)				# proTuple will tell you the length of the protein 
-				min_pro_len, proSeq = proTuple					# protein length
+				# proTuple = orfLength(uniprotID)				# proTuple will tell you the length of the protein 
+				# min_pro_len, proSeq  = proTuple
+				min_pro_len, proSeq = len(uprotSeq), uprotSeq
 				quadTuple, info = taxBLASTn(uniprotID,taxon,proSeq)
 				debug += info
 				if len(quadTuple) != 0:
