@@ -1,3 +1,5 @@
+#!/usr/bin/env python2.7
+
 import os, sys, shutil, argparse, re
 from time import time
 from Bio import AlignIO, Phylo, SeqIO

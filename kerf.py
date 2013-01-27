@@ -1,3 +1,5 @@
+#!/usr/bin/env python2.7
+
 from Bio import Phylo # from Biopython
 from Bio import SeqIO # from Biopython
 import sys
