@@ -15,6 +15,21 @@ class DNA2ProtAlign:
 	def __init__(self):
 		pass
 
+	def getAAseqs(self, fileProt):
+
+				#Read protein sequences from file
+		def getProtDict(fileProt):
+			ProtDict = {}
+			with open(fileProt, "rU") as handle:
+				for record in SeqIO.parse(handle, "fasta"):
+					accession = re.search(r'([A-N,R-Z][0-9][A-Z][A-Z,0-9][A-Z,0-9][0-9]|[O-Q][0-9][A-Z,0-9][A-Z,0-9][A-Z,0-9][0-9])', record.id)
+					if accession:
+						ProtDict[accession.group(1)] = str(record.seq).replace('-','')
+
+			return ProtDict
+
+		return getProtDict(fileProt)
+
 	def alignDNAseqs(self, fileProt, fileDNA, fileOutput):
 
 		#Read protein sequences from file
@@ -88,9 +103,6 @@ class DNA2ProtAlign:
 		#DNA sequence.
 		def translateProt2DNAmsa(seqProt, seqDNA, idProt):
 			checkCodons = False	#Set 'True' to check that codons match residues
-			gapHandlingDNA = 1	#Set '1' to transfer gap to protein
-								#Set '2' to use aligned codon from nearest neighbor
-								#Set '3' TBD
 
 			#Make sure number of DNA sequences matches number of proteins aligned
 			if len(seqProt) != len(seqDNA):
@@ -111,75 +123,18 @@ class DNA2ProtAlign:
 						#if match, place Upper Casecodon in DNA MSA sequence, if no match, place '!!!',
 						#move on to next codon.
 						if str(seqDNA[i][indexDNA*3:indexDNA*3+3]) == '***':
-							if gapHandlingDNA == 1:		#Transfer DNA gap to protein
-								currSeq += '---'
-							# if gapHandlingDNA == 2:
-							# 	fullTree = Phylo.read(fileAllTree, 'newick')
-							# 	#DEBUG: Draw an ASCII tree, just for Nima
-							# 	print Phylo.draw_ascii(fullTree)
-							# 	minDistance = 99999					#Set very high value
-							# 	nearestNeighbor = -1				#Start at -1 in case no neighbor found
-							# 	#Loop over all proteins in clade looking for nearest neighbor with matching AA at the
-							# 	#same position and transfer codon if available.
-							# 	for k in xrange(0, len(seqProt)):
-							# 		if (idProt[i] != idProt[k]) and (seqProt[k][j] == seqProt[i][j] ):	#TODO: Currently only checking for AA w/ same case
-							# 			distNodes = fullTree.distance(idProt[i], idProt[k])
-							# 			#DEBUG: Print distance values
-							# 			print "Distance between " + str(idProt[i]) + " and " + str(idProt[k])
-							# 			print distNodes
-							# 			if distNodes < minDistance:		#Select current leaf it's the closer to target than last nearest
-							# 				minDistance = distNodes
-							# 				nearestNeighbor = k
-							# 	if nearestNeighbor > -1:		#A nearest neighbor with matching AA was found!
-							# 		#DEBUG: List nearest neighbor with matching AA
-							# 		print "Nearest neighbor is: " + str(idProt[nearestNeighbor])
-							# 		currSeq += seqDNA[nearestNeighbor][indexDNA*3:indexDNA*3+3]
+							currSeq += '---'
 						else:
-							if checkCodons:
-								if str(Seq.translate(seqDNA[i][indexDNA*3:indexDNA*3+3])) == str(seqProt[i][j]):
-									currSeq += seqDNA[i][indexDNA*3:indexDNA*3+3]
-								else:
-									currSeq += '!!!'
-							else:
-								currSeq += seqDNA[i][indexDNA*3:indexDNA*3+3]
+							currSeq += seqDNA[i][indexDNA*3:indexDNA*3+3]
 						indexDNA += 1
 					else:
 						#Grab next Lower Case codon in seq, check to make sure it codes for current AA (if checkCodons=True),
 						#if match, place Lower Case codon in DNA MSA sequence, if no match, place '!!!',
 						#move on to next codon.
 						if str(seqDNA[i][indexDNA*3:indexDNA*3+3]) == '***':
-							if gapHandlingDNA == 1:		#Transfer DNA gap to protein
-								currSeq += '---'
-							# if gapHandlingDNA == 2:
-							# 	fullTree = Phylo.read(fileAllTree, 'newick')
-							# 	#DEBUG: Draw an ASCII tree, just for Nima
-							# 	print Phylo.draw_ascii(fullTree)
-							# 	minDistance = 99999					#Set very high value
-							# 	nearestNeighbor = -1				#Start at -1 in case no neighbor found
-							# 	#Loop over all proteins in clade looking for nearest neighbor with matching AA at the
-							# 	#same position and transfer codon if available.
-							# 	for k in xrange(0, len(seqProt)):
-							# 		if (idProt[i] != idProt[k]) and (seqProt[k][j] == seqProt[i][j] ):	#TODO: Currently only checking for AA w/ same case
-							# 			distNodes = fullTree.distance(idProt[i], idProt[k])
-							# 			#DEBUG: Print distance values
-							# 			print "Distance between " + str(idProt[i]) + " and " + str(idProt[k])
-							# 			print distNodes
-							# 			if distNodes < minDistance:		#Select current leaf it's the closer to target than last nearest
-							# 				minDistance = distNodes
-							# 				nearestNeighbor = k
-							# 	if nearestNeighbor > -1:		#A nearest neighbor with matching AA was found!
-							# 		#DEBUG: List nearest neighbor with matching AA
-							# 		print "Nearest neighbor is: " + str(idProt[nearestNeighbor])
-							# 		currSeq += seqDNA[nearestNeighbor][indexDNA*3:indexDNA*3+3]
+							currSeq += '---'
 						else:
-							if checkCodons:
-								upperSeqProtein = seqProt[i][j].upper()
-								if str(Seq.translate(seqDNA[i][indexDNA*3:indexDNA*3+3])) == str(upperSeqProtein):
-									currSeq += seqDNA[i][indexDNA*3:indexDNA*3+3].lower()
-								else:
-									currSeq += '!!!'
-							else:
-								currSeq += seqDNA[i][indexDNA*3:indexDNA*3+3].lower()
+							currSeq += seqDNA[i][indexDNA*3:indexDNA*3+3].lower()
 						indexDNA += 1
 				msaDNA.append(currSeq)
 

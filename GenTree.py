@@ -23,9 +23,9 @@ class GenTree:
 		#Phylo.write(tree, name, 'newick')
 
 		with open(ID+'/HYPNO.debug','a') as debugFh:
-			for line in pro.communicate():
-				debugFh.write(line.rstrip())
 			debugFh.write('\n')
+			for line in pro.communicate():
+				debugFh.write(line)
 		return 0
 
 	#Recalculate branch lengths keeping topology fixed
