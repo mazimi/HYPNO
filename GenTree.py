@@ -1,6 +1,6 @@
 #!/usr/bin/env python2.7
 
-import re, subprocess
+import re, subprocess, sys
 from subprocess import Popen
 from Bio import Phylo
 
@@ -36,7 +36,6 @@ class GenTree:
 			msaFile = open(MSA, 'rU')
 			treeFile = open(tree, 'rU')
 			msaFilteredFile = open(MSA + '_filtered', 'w')
-			flagHeader = False
 			flagKeepSeq = False
 
 			treeString = treeFile.read()
@@ -44,7 +43,6 @@ class GenTree:
 			for line in msaFile:
 				matchHeader = re.search(r'^\>', line)
 				if matchHeader:
-					flagHeader = True
 					matchUniprot = re.search(r'([A-N,R-Z][0-9][A-Z][A-Z,0-9][A-Z,0-9][0-9]|[O-Q][0-9][A-Z,0-9][A-Z,0-9][A-Z,0-9][0-9])', line)
 					if matchUniprot:
 						matchUniprotTree = re.search(re.escape(matchUniprot.group(1)), treeString)
@@ -54,13 +52,9 @@ class GenTree:
 							flagKeepSeq = False
 					else:
 						flagKeepSeq = False
-				else:
-					flagHeader = False
 
-				if (flagHeader == False) and flagKeepSeq:
+				if flagKeepSeq:
 					msaFilteredFile.write(line)
-				elif flagHeader and flagKeepSeq:
-					msaFilteredFile.write('>' + matchUniprot.group(1) + ' HYPNO filtered output\n')
 
 			msaFile.close()
 			treeFile.close()
