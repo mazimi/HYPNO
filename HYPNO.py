@@ -337,7 +337,8 @@ def main():
 		print '\tHYPNO debug directory:', str(ID)
 		print '\t\tDescription: please refer to HYPNO "debug" directory FAQ at'
 		print '\t\thttp://tinyurl.com/bjh92an for a description of how to use'
-		print '\t\tthe files provided in this directory.'
+		print '\t\tthe files provided in this directory, including the .csv'
+		print '\t\tfile indicating the Kerf subtree groupings.'
 		print '\nHYPNO execution completed.'
 	else:
 		print 'Step 0 of 2: Input validation'
@@ -355,7 +356,8 @@ def main():
 		print '\tHYPNO debug directory:', str(ID)
 		print '\t\tDescription: please refer to HYPNO "debug" directory FAQ at'
 		print '\t\thttp://tinyurl.com/bjh92an for a description of how to use'
-		print '\t\tthe files provided in this directory.'
+		print '\t\tthe files provided in this directory, including the .csv'
+		print '\t\tfile indicating the Kerf subtree groupings.'
 		print '\nHYPNO execution completed.'
 
 if __name__ == '__main__':
