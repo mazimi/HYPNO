@@ -1,6 +1,6 @@
 #!/usr/bin/env python2.7
 
-import os, sys, shutil, argparse, re
+import os, sys, shutil, argparse, re, urllib2
 from time import time
 from Bio import AlignIO, Phylo, SeqIO
 from Bio.Seq import Seq
@@ -13,35 +13,37 @@ from GenTree import GenTree
 #Creates a temporary directory to store data files
 def initialize(ID, msa, tree=None):
 	os.mkdir(ID)
-	sanitizeInputs(ID, msa, tree)
+	leafLabels, seqHeaders = sanitizeInputs(ID, msa, tree)
 	with open(ID+'/HYPNO.debug','w') as debugFh:
 		debugFh.write('HYPNO debug info:\n\n')
+	return leafLabels, seqHeaders
 
 #Ensure that all entries contain valid Uniprot Accessions
 #Produce new input files containing only Uniprot Accessions as identifiers in 'ID'
 def sanitizeInputs(ID, msa, tree=None):
 	#Sanitize MSA
-	msaFile = open(msa, 'rU')
-	msaSanitized = open(ID + '/' + msa, 'w')
-	lineCount = 0
+	leafLabels, seqHeaders = {}, {}
+	with open(msa, 'rU') as msaFile:
+		with open(ID + '/' + msa, 'w') as msaSanitized:
+			lineCount = 0
 
-	for line in msaFile:
-		lineCount += 1
-		matchHeader = re.search(r'^\>', line)
-		if matchHeader:
-			matchUniprot = re.search(r'([A-N,R-Z][0-9][A-Z][A-Z,0-9][A-Z,0-9][0-9]|[O-Q][0-9][A-Z,0-9][A-Z,0-9][A-Z,0-9][0-9])', line)
-			if matchUniprot:
-				msaSanitized.write('>' + matchUniprot.group(1) + ' HYPNO input\n')
-			else:
-				debugFh.write('\tMSA header at line ' + lineCount + ' missing valid Uniprot accession.\n')
-				print '** HYPNO input error: given MSA headers must contain valid UniProt accessions.', \
-					  '\tAccession missing for given line: ' + lineCount
-				sys.exit(1)
-		else:
-			msaSanitized.write(line)
-
-	msaFile.close()
-	msaSanitized.close()
+			for line in msaFile:
+				lineCount += 1
+				matchHeader = re.search(r'^\>(.*)\n', line)
+				if matchHeader:
+					header = matchHeader.group(1)
+					matchUniprot = re.search(r'([A-N,R-Z][0-9][A-Z][A-Z,0-9][A-Z,0-9][0-9]|[O-Q][0-9][A-Z,0-9][A-Z,0-9][A-Z,0-9][0-9])', header)
+					if matchUniprot:
+						accession = matchUniprot.group(1)
+						seqHeaders[accession] = header
+						msaSanitized.write('>' + accession + ' HYPNO input\n')
+					else:
+						debugFh.write('\tMSA header at line ' + lineCount + ' missing valid Uniprot accession.\n')
+						print '** HYPNO input error: given MSA headers must contain valid UniProt accessions.', \
+							  '\tAccession missing for given line: ' + header
+						sys.exit(1)
+				else:
+					msaSanitized.write(line)
 
 	#Sanitize Tree
 	if tree:
@@ -50,13 +52,22 @@ def sanitizeInputs(ID, msa, tree=None):
 		for leaf in objTree.get_terminals():
 			matchUniprot = re.search(r'([A-N,R-Z][0-9][A-Z][A-Z,0-9][A-Z,0-9][0-9]|[O-Q][0-9][A-Z,0-9][A-Z,0-9][A-Z,0-9][0-9])', leaf.name)
 			if matchUniprot:
-				leaf.name = matchUniprot.group(1)
+				accession = matchUniprot.group(1)
+				leafLabels[accession] = str(leaf.name)
+				leaf.name = accession
 			else:
 				debugFh.write('\tTerminal \'' + leaf.name + '\' in the newick tree is missing a valid Uniprot accession.\n')
 				print '** HYPNO input error: \'' + leaf.name + '\' in the newick tree is not a valid Uniprot accession.'
 				sys.exit(1)
 
 		Phylo.write(objTree, ID + '/' + tree, "newick")
+
+	return leafLabels, seqHeaders
+
+# Parses out the filename prefix 
+# for the Outputs description
+def parsePrefix(msaName):
+	return msaName.split('.')[0]
 
 #Calls kerf as a class to split trees into
 #subtrees based on given threshold
@@ -69,7 +80,7 @@ def makeSubtrees(ID, msa, tree, threshold):
 
 #Retreives DNA sequences for each subtree
 #from Kerf generated csv MSA map file
-def getDNASeqs(ID, msa, pred, execMin):
+def getDNASeqs(ID, msa, pred, execMin, seqHeaders):
 	numSubTrees = 0
 	listAccessionIDs = [[]]
 	listLongID = [[]]
@@ -120,8 +131,8 @@ def getDNASeqs(ID, msa, pred, execMin):
 				if nucFetchTuple[4] == 'null':
 					missed += 1; missedList.append(uniprotID)
 					if nucFetchTuple[10] != 'null':
-						print '\t**HYPNO obsolete UniProt entry warning: ', nucFetchTuple[10]
-						debugFh.write('\t**HYPNO obsolete UniProt entry warning: '+nucFetchTuple[10])
+						print '\t** HYPNO obsolete UniProt entry warning: ', nucFetchTuple[10]
+						debugFh.write('\t** HYPNO obsolete UniProt entry warning: '+nucFetchTuple[10])
 					else:
 						debugFh.write(nucFetchTuple[11])			
 					continue
@@ -132,8 +143,7 @@ def getDNASeqs(ID, msa, pred, execMin):
 									'user provided threshold '+str(pred)+' for percent identity to expected protein '+ \
 									'sequence (only '+str(nucFetchTuple[6])+'). Continuing execution.\n')
 					continue
-				DNASeqs2Write.append(SeqRecord(Seq(nucFetchTuple[9]), id=listLongID[i][j], description="HYPNO FASTA Output"))
-				#print '\t' + uniprotID + ' - ' + nucFetchTuple[9] + '\n' #DEBUG: print uniprot ID and sequence
+				DNASeqs2Write.append(SeqRecord(Seq(nucFetchTuple[9]), id=listLongID[i][j], description=seqHeaders[uniprotID]))
 				j += 1
 
 		#Write DNA sequences for each subtree to file
@@ -253,14 +263,38 @@ def validateInputs(msa, tree=None):
 		except:
 			print '** HYPNO input error: improper tree file format, must be Newick format: '+msa
 			sys.exit(1)
+
+	if not internet_connected():
+		print '** HYPNO connection error: Please connect to the internet to enable HYPNO remote database queries.'
+		sys.exit(1)
+
 	return 0
 
+def labelLeaves(leafLabels, filename):
+	treeLines = []
+	with open(filename, 'r') as treeFh:
+		for line in treeFh:
+			treeLines.append(line)
+	tree = treeLines[0]
+	UniProtRegex = r'([A-N,R-Z][0-9][A-Z][A-Z,0-9][A-Z,0-9][0-9]|[O-Q][0-9][A-Z,0-9][A-Z,0-9][A-Z,0-9][0-9])'
+	for accession in re.findall(UniProtRegex, tree):
+		tree = tree.replace(accession, leafLabels[accession])
+	with open(filename, 'w') as treeFh:
+		treeFh.write(tree)
+	return 0
+
+def internet_connected():
+    try:
+        response=urllib2.urlopen('http://www.google.com',timeout=1)
+        return True
+    except urllib2.URLError as err: pass
+    return False
 
 def main():
 	#Parse arguments specifying MSA and TREE files
 	parser = argparse.ArgumentParser(description='Method for HYbrid Protein NucleOtide phylogenetic gene tree reconstruction')
-	parser.add_argument('--msa', type = str, help='Input Multiple Sequence Alignment: the user must provide this argument followed by the path to an alignment of amino acid sequences, with UniProt accessions included in the sequence headers. HYPNO will retrieve the corresponding nucleic acid sequences and use the provided alignment as a template for constructing a nucleotide MSA. (requires aligned FASTA or UCSC a2m format)', required=True)
-	parser.add_argument('--tree', type = str, help='Tree re-estimation: specifying this argument along with an input tree filename results in re-estimatation of tree topology based on nucleotide sequences. If this argument is not provided, HYPNO retrieves nucleic acid sequences, overlays them on the original protein MSA and outputs this nucleotide MSA without generating a tree. (requires newick format)', required=False)
+	parser.add_argument('--msa', type = str, help='Input Multiple Sequence Alignment (aligned FASTA or UCSC a2m format): the user must provide this argument followed by the path to an alignment of amino acid sequences, with UniProt accessions included in the sequence headers. HYPNO will retrieve the corresponding nucleic acid sequences and use the provided alignment as a template for constructing a nucleotide MSA.', required=True)
+	parser.add_argument('--tree', type = str, help='Tree re-estimation (Newick format): specifying this argument along with an input tree filename results in re-estimatation of tree topology based on nucleotide sequences. If this argument is not provided, HYPNO retrieves nucleic acid sequences, overlays them on the original protein MSA and outputs this nucleotide MSA without generating a tree.', required=False)
 	parser.add_argument('--k', default = 90.0, type = float, help='Subtree selection: the "subtree selection" fractional sequence identity cutoff as input to the Kerf algorithm (default: 90). To override the default setting, type "--k <X>", where X is a real number between 0 and 100. For example, to set the subtree selection value to 93, one should type "--k 93.0". (default: 90.0)', required=False)
 	parser.add_argument('--n', default = 95.0, type = float, help='PercentID match: the minimum fractional sequence identity that the translation of a retrieved nucleotide sequence must have relative to the expected protein sequence for it to be accepted (default: 95). To override the default setting, type "--n <X>", where X is a real number between 0 and 100. For example, to set the percentID match value to 80, one should type "--n 80.0". (default: 95.0)', required=False)
 	parser.add_argument('--s', default = 100.0, type = float, help='Retrieval minimum: the minimum fraction of nucleotide sequences that must be retrieved in order for HYPNO to continue (default: 100). In the case that a retrieval minimum of less than 100 percent is specified and HYPNO encounters a protein sequence for which a nucleotide sequence with sufficient sequence identity is unavailable, HYPNO continues executing and excludes the sequence(s) from the final nucleotide MSA and tree outputs. To override the default setting, type "--s <X>", where X is a real number between 0 and 100. For example, to set the retrieval minimum value to 90, one should type "--s 90.0". (default: 100.0)', required=False)
@@ -268,16 +302,16 @@ def main():
 	parser.add_argument('--oplnuc', default = False, action = 'store_true', help='Branch length optimization: when this argument is specified, HYPNO outputs the expected nucleotide tree as "foo.hypno.tree" but also performs midpoint rooting on the tree and calculates branch lengths using the nucleotide MSA, holding the tree topology fixed. The output of this branch length optimization can be found in "foo.opl.hypno.tree". (default: False)', required=False)
 	args = parser.parse_args()
 	msa, tree, kerf, pred, execMin, opl, oplnuc = args.msa, args.tree, args.k, args.n, args.s, args.opl, args.oplnuc
-
+	filePrefix = parsePrefix(msa)
 	ID = time()									#Used to create directory to store files
 	if tree:
 		print 'Step 0 of 5: Input validation'
 		validateInputs(msa,tree)
-		initialize(str(ID), msa, tree)				#Create dir and move input files
+		leafLabels, seqHeaders = initialize(str(ID), msa, tree)		#Create dir and move input files
 		print 'Step 1 of 5: Generating subtrees'
 		makeSubtrees(str(ID), msa, tree, kerf)		#Run Kerf
 		print 'Step 2 of 5: Retrieving DNA sequences'
-		numSubTrees, treeHierarchy, listLongID = getDNASeqs(str(ID), msa, pred, execMin)
+		numSubTrees, treeHierarchy, listLongID = getDNASeqs(str(ID), msa, pred, execMin, seqHeaders)
 		print 'Step 3 of 5: Mapping DNA sequences to given protein MSA'
 		alignDNASeqs(str(ID), msa, numSubTrees)
 		mergeAlignments(str(ID), msa, numSubTrees)
@@ -291,20 +325,40 @@ def main():
 		elif oplnuc:
 			print 'Optional Step: Recalculating tree branch lengths'
 			calcBranchLengths(str(ID), msa, 'nuc')
-		print 'HYPNO execution completed.'
+		labelLeaves(leafLabels, filePrefix+'.hypno.tree')
+		if opl or oplnuc:
+			labelLeaves(leafLabels, filePrefix+'.opl.hypno.tree')
+
+		print '\nOutput files created in current directory:'
+		if opl or oplnuc:
+			print '\tHYPNO Reoptimized Hybrid Tree file: ', filePrefix+'.opl.hypno.tree'
+		print '\tHYPNO Hybrid Tree file:', filePrefix+'.hypno.tree'
+		print '\tNucleotide MSA file:', filePrefix+'.hypno.msa'
+		print '\tHYPNO debug directory:', str(ID)
+		print '\t\tDescription: please refer to HYPNO "debug" directory FAQ at'
+		print '\t\thttp://tinyurl.com/bjh92an for a description of how to use'
+		print '\t\tthe files provided in this directory, including the .csv'
+		print '\t\tfile indicating the Kerf subtree groupings.'
+		print '\nHYPNO execution completed.'
 	else:
 		print 'Step 0 of 2: Input validation'
 		validateInputs(msa)
-		initialize(str(ID), msa)					#Create dir and move input files
+		leafLabels_empty, seqHeaders = initialize(str(ID), msa)		#Create dir and move input files
 		makeSingleSubtree(str(ID), msa)				#Create a CSV with entire MSA in one "subtree"
 		print 'Step 1 of 2: Retrieving DNA sequences'
-		numSubTrees, treeHierarchy, listLongID = getDNASeqs(str(ID), msa, pred, execMin)
+		numSubTrees, treeHierarchy, listLongID = getDNASeqs(str(ID), msa, pred, execMin, seqHeaders)
 		print 'Step 2 of 2: Mapping DNA sequences to given protein MSA'
 		alignDNASeqs(str(ID), msa, numSubTrees)
 		mergeAlignments(str(ID), msa, numSubTrees)
-		print 'HYPNO execution completed.'
-
-
+		
+		print '\nOutput files created in current directory:'
+		print '\tNucleotide MSA file:', filePrefix+'.hypno.msa'
+		print '\tHYPNO debug directory:', str(ID)
+		print '\t\tDescription: please refer to HYPNO "debug" directory FAQ at'
+		print '\t\thttp://tinyurl.com/bjh92an for a description of how to use'
+		print '\t\tthe files provided in this directory, including the .csv'
+		print '\t\tfile indicating the Kerf subtree groupings.'
+		print '\nHYPNO execution completed.'
 
 if __name__ == '__main__':
 	main()

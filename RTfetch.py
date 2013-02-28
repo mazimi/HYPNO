@@ -4,7 +4,7 @@ from Bio import Entrez, SeqIO, AlignIO
 from xml.etree.ElementTree import ElementTree
 from Bio.Blast import NCBIWWW
 from Bio.Seq import Seq
-import os, re, subprocess, sys, xml, urllib,urllib2
+import os, re, subprocess, sys, xml, urllib,urllib2, Bio
 from Bio.Emboss.Applications import NeedleCommandline
 from HTMLParser import HTMLParser
 
@@ -49,7 +49,12 @@ class RTfetch:
 			alignedSoFar, querySoFar, mappedSeq, seq_len = '', '', '', len(seq)
 			for strand, nuc in [(+1, seq), (-1, seq.reverse_complement())]:	# Forward vs. Reverse frames
 				for frame in range(3):										# 3 reading frames for each
-					trans = str(nuc[frame:].translate(trans_table))
+					try:
+						trans = str(nuc[frame:].translate(trans_table))
+					except Bio.Data.CodonTable.TranslationError:
+						print '** HYPNO connection error: The nucleotide sequence databases queried by HYPNO are \
+								currently unavailable. Please check that you are connected to the internet.'
+						sys.exit(1)
 					trans_len, aa_start, aa_end = len(trans), 0, 0
 					while aa_start < trans_len:
 						aa_end = trans.find("*", aa_start)					# Find stop codon ('*' character)
@@ -109,13 +114,13 @@ class RTfetch:
 
 		def getpID(target,template):
 			# Write sequences to temporary files for EMBOSS needle call											
-			with open('tempA.fasta', 'w') as seqA:			
-				with open('tempB.fasta', 'w') as seqB:			
-					seqA.write('> seqA\n'+target+'\n')
-					seqB.write('> seqB\n'+template+'\n')
-			os.system('needle -asequence tempA.fasta -sprotein1 -bsequence tempB.fasta -sprotein2 -gapopen 10 -gapextend 0.5 \
-							-outfile tempAlign.needle -auto')
-			with open('tempAlign.needle','rU') as needle:
+			with open('HYPNO_temporaryFile_1.fasta', 'w') as seqA:			
+				with open('HYPNO_temporaryFile_2.fasta', 'w') as seqB:			
+					seqA.write('> HYPNO target protein sequence\n'+target+'\n')
+					seqB.write('> HYPNO putative ORF translation\n'+template+'\n')
+			os.system('needle -asequence HYPNO_temporaryFile_1.fasta -sprotein1 -bsequence HYPNO_temporaryFile_2.fasta \
+							-sprotein2 -gapopen 10 -gapextend 0.5 -outfile HYPNO_temporaryAlignment.needle -auto')
+			with open('HYPNO_temporaryAlignment.needle','rU') as needle:
 				alignment = AlignIO.read(needle,"emboss")
 				i, counter, gaps = float(0), 0, 0
 				sequence0, sequence1= alignment[0], alignment[1]
@@ -133,9 +138,9 @@ class RTfetch:
 					counter += 1
 				percent = float(100)*i/float(len(seq0))
 				# Dispose of temporary FASTA files
-			os.remove('tempA.fasta')
-			os.remove('tempB.fasta')
-			os.remove('tempAlign.needle')
+			os.remove('HYPNO_temporaryFile_1.fasta')
+			os.remove('HYPNO_temporaryFile_2.fasta')
+			os.remove('HYPNO_temporaryAlignment.needle')
 			return float(percent),seq0.upper(),seq1.upper(), gaps
 
 		# orfLength: determines length of ORFs based on protein sequence length via uniprot query
