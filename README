@@ -53,6 +53,20 @@ Options:
                         and branch lengths are calculated using the nucleotide MSA
                         while tree topology is kept constant.
 
+EXAMPLE DATA
+============
+
+Example input files, “large_sample.afa” and “large_sample.nwk” (sample tree containing 
+120 leaves) as well as “small_sample.afa” and “small_sample.nwk” (sample tree containing 
+only 17 leaves) are also provided in the HYPNO source code repository. Suggested usage 
+for these datasets is as follows:
+
+    python HYPNO.py --msa large_sample.afa --tree large_sample.nwk --k 80 --n 80 –-opl
+    python HYPNO.py --msa small_sample.afa --tree small_sample.nwk --k 70 --n 80 --opl
+
+For a description of how to interpret which subtrees have been refined by HYPNO, please
+refer to the HYPNO FAQ at http://phylogenomics.berkeley.edu/HYPNO/help/.
+
 OUTPUTS
 =======
 
